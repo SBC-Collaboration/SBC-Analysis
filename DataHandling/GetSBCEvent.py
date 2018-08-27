@@ -86,6 +86,7 @@ def GetEvent(rundirectory, ev, *loadlist):
             print('Failed to load PMTtraces')
             traceback.print_exc()
 
+
     if ('event' in loadlist) or (neglist and '~event' not in loadlist):
         try:
             with open(os.path.join(event_dir, 'Event.txt'), 'r') as ev_txt:

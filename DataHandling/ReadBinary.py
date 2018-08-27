@@ -2,6 +2,7 @@
 
 import numpy as np
 import sys
+import os
 from collections import OrderedDict
 # import pdb
 # import matplotlib.pyplot as plt
@@ -14,11 +15,12 @@ system_endianness = sys.byteorder
 file_endianness = 'little'
 
 
-def ReadBlock(file_name):
+def ReadBlock(file_name, max_file_size = 500):
     '''
     This function takes in a binary data file, and reads it in byte-wise,
     then recasts each variable
     to the proper data type, and stores it in a dictionary to be returned.
+    If the size of the file is greater than max_file_size (in MB), then it will not open/load.
     '''
     variables_dict = OrderedDict()
     possible_data_types = {'char': 8, 'int8': 8,
@@ -30,6 +32,13 @@ def ReadBlock(file_name):
                            'float64': 64, 'float32': 32}
 
     # Open file here
+    file_size = os.path.getsize(file_name)/1000/1000  # To get result in mb
+    if file_size > max_file_size:
+        # This exception is raised here because it's the responsibility of whoever called the function to handle it
+        # appropriately!
+        raise IOError("File {} is {} MB. Increase current max_file_size: {}".\
+                      format(file_name, file_size, max_file_size))
+
     with open(file_name, "rb") as read_in:
         # Check the Endianness flag of the block
         endianness = np.fromfile(read_in, dtype=np.uint32, count=1)
@@ -45,6 +54,7 @@ def ReadBlock(file_name):
         header = np.fromfile(read_in, dtype=np.uint8, count=header_len[0])
         header_str = "".join(map(chr, header))
         header_components = header_str.split(';')
+
 
         # Create parallel arrays to store the variables types and numbers,
         # then populate them

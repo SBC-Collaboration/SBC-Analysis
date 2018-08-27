@@ -12,7 +12,8 @@ def WriteBinaryNtupleFile(filename, data,
 
         # check whether data is a dict or a list of dicts
         if type(data) is dict or type(data) is collections.OrderedDict:
-            keylist = data.keys()
+            keylist = list(data.keys()) # Must recast as list since python3 returns .keys() as a dict_keys object
+                                        # which does not support indexing. (It works more like a set...)
             if all([data[k].shape[0] == data[keylist[0]].shape[0]
                    for k in keylist]):
                 drop_first_dim = True
