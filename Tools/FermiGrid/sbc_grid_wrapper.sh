@@ -23,10 +23,10 @@ setup root v5_34_12 -q nu:e4:prof
 #setup root v6_08_06g -q nu:e14:prof
 echo "Setting up gcc v6_3_0"
 setup gcc v6_3_0
-echo "setup python v2_7_13d"
-setup python v2_7_13d
-#echo "setup python v3_5_3"
-#setup python v3_5_3
+# echo "setup python v2_7_13d"
+# setup python v2_7_13d
+# echo "setup python v3_5_3"
+# setup python v3_5_3
 
 
 
@@ -54,15 +54,17 @@ SKIP_PMT=${8// } # trim all spaces
 
 DATASERIES=${DATA_DIR##*/} # eg. SBC-17-data
 
-
+echo;
 if [ -d $_CONDOR_SCRATCH_DIR ]; then
+    echo "Using CONDA scratch dir"
 	MYSUBDIR=$_CONDOR_SCRATCH_DIR/process_single_run_$$
 else
+    echo "Using OSG_WN_TMP dir"
 	MYSUBDIR=$OSG_WN_TMP/process_single_run_$$
 fi
-echo "MYSUBDIR: $MYSUBDIR"
+echo "Picked MYSUBDIR: $MYSUBDIR"
 mkdir $MYSUBDIR
-
+echo;
 
 
 # copy SBCcode
@@ -99,7 +101,7 @@ echo "Going to look in $RUN_LIST_FILE for run_list"
 TEMP_RUN_LIST_FILE=$MYSUBDIR/$(basename $RUN_LIST_FILE)
 echo "ifdh cp $RUN_LIST_FILE $TEMP_RUN_LIST_FILE"
 ifdh cp $RUN_LIST_FILE $TEMP_RUN_LIST_FILE
-echo "ls -l $MYSUBDIR"
+echo "ls -l $MYSUBDIR"CODE_DIR
 ls -l $MYSUBDIR
 LINE=`expr $PROCESS + 1`
 RUN=`head -$LINE $TEMP_RUN_LIST_FILE | tail -1`
@@ -124,6 +126,7 @@ prev_time=$cur_time
 
 
 # copy data
+echo "Copying Data"
 echo; echo;
 if ifdh ls $DATA_DIR/$RUN.tgz; then
     mkdir $MYSUBDIR/$DATASERIES/$RUN
@@ -237,7 +240,12 @@ export MCR_CACHE_ROOT=$MYSUBDIR/tmp
 
 echo; echo;
 echo "Doing analysis"
-echo "python $MYSUBDIR/SBCcode/Tools/FermiGrid/process_single_run.py $OPTION_TEXT $RUN $MYSUBDIR/$DATASERIES $CODE_DIR $MYSUBDIR/output $MYSUBDIR/log > $MYSUBDIR/log/$RUN/process_single_run.log 2>&1"
+echo "Opting for anaconda distribution of python and adding SBCcode to PYTHONPATH"
+echo "Opting for jgresl's copy of SBCcode (/nashome/j/jgresl/Projects/Event-Viewer/SBCcode/)"
+
+unset PYTHONHOME
+export PYTHONPATH=${PYTHONPATH}:/nashome/j/jgresl/Projects/EventViewer/SBCcode
+echo "coupp/app/home/coupp/anaconda3/bin/python3 $MYSUBDIR/SBCcode/Tools/FermiGrid/process_single_run.py $OPTION_TEXT $RUN $MYSUBDIR/$DATASERIES $CODE_DIR $MYSUBDIR/output $MYSUBDIR/log > $MYSUBDIR/log/$RUN/process_single_run.log 2>&1"
 #python $MYSUBDIR/SBCcode/Tools/FermiGrid/process_single_run.py $OPTION_TEXT --run $RUN $MYSUBDIR/$DATASERIES $CODE_DIR $MYSUBDIR/output $MYSUBDIR/log > $MYSUBDIR/log/$RUN/process_single_run.log 2>&1
 
 #if [[ -z $SKIP_PMT ]]; then
@@ -247,7 +255,8 @@ echo "python $MYSUBDIR/SBCcode/Tools/FermiGrid/process_single_run.py $OPTION_TEX
 #fi
 python $MYSUBDIR/SBCcode/Tools/FermiGrid/process_single_run.py \
     $OPTION_TEXT \
-    --run $RUN $MYSUBDIR/$DATASERIES $CODE_DIR $MYSUBDIR/output $MYSUBDIR/log > $MYSUBDIR/log/$RUN/process_single_run.log 2>&1
+    --run=$RUN $MYSUBDIR/$DATASERIES $CODE_DIR $MYSUBDIR/output $MYSUBDIR/log > $MYSUBDIR/log/$RUN/process_single_run.log 2>&1
+
 
 #if [ -e $MYSUBDIR/log/$RUN/processing_failed ]
 #then
@@ -277,12 +286,14 @@ if ! ifdh ls $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN &> /dev/null; then
     echo "Making $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN directory!"
 fi
 
+
 OUTFILES=$(ls $MYSUBDIR/output/$RUN/*.bin)
 for FF in $OUTFILES; do
     ifdh rm $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN/$(basename $FF) &> /dev/null
     echo COPYING $FF
     ifdh cp -D $FF $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN/
 done
+
 
 #if ifdh ls $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN &> /dev/null; then
 #    echo "Removing $OUTPUT_DIR/$DATASERIES_SHORT/output/$RUN"

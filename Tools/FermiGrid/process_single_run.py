@@ -68,13 +68,12 @@ def parse_process_opt(argv):
     code_dir = args.code_dir
     output_dir = args.output_dir
     log_dir = args.log_dir
-
+    print ("PROCESS LIST: {}".format(process_list))
     return runlist, process_list, data_dir, code_dir, output_dir, log_dir
 
 
 def main(argv):
     runlist, process_list, data_dir, code_dir, output_dir, log_dir = parse_process_opt(argv)
-
     for runname in runlist:
         runid_str = runname.split('_')
         runid = np.int32(runid_str)

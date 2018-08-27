@@ -2,16 +2,16 @@
 # the example format below. It's probably a good idea to raise exceptions in this file, and then
 # decide how you want to handle them in your own scripts. If possible, provide tests immediately after
 # in an if __name__ == "__main__": block. Include normal and edge cases.
-#
+
 
 def example_function(s, n, sep=""):
     # Author: John Gresl 8/2/2018
     # Inputs:
     #   s: Any string.
     #   n: An integer. Number of times to copy s.
-    #   sep: A string. Will be inserted between every copy of s.
+    #   sep (optional): A string. Will be inserted between every copy of s.
     # Outputs:
-    #   The string s repeated n times.
+    #   The string s repeated n times with sep between each copy..
     # Example: example_function("hello", 3) == "hellohellohello"
     return ((s + sep) * n)[:-len(sep)]
 
@@ -24,19 +24,21 @@ if __name__ == "__main__":
 
 """
 Table of Contents:
-
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
 real_number_q(n): Returns true if n is a number (numpy int, float, uint, or python int or float)
-
+------------------------------------------------------------------------------------------------------------------------
 dictionary_append(d1, *args, make_copy=True): Returns a dictionary with the values from dictionaries in args
                                               appended to the values in d1. Modifies d1 in place if make_copy is False,
                                               otherwise returns a deepcopy of d1.
-
+------------------------------------------------------------------------------------------------------------------------
 sort_runs(arr, reverse): Sorts an array of runs if the array looks like ["20170623_0", "20170623_5", ...]
-
+------------------------------------------------------------------------------------------------------------------------
 get_runs(dir, search_for="folders", do_sort=True, reverse=False): Compiles a list of runids from a directory.
-
+------------------------------------------------------------------------------------------------------------------------
 trim_run_list(arr, start=None, stop=None): Trims a runlist like one that was returned from get_runs or sort_runs.
                                            start/stop should be a runid like "20170623_0" or None.
+------------------------------------------------------------------------------------------------------------------------
 
 
 """
@@ -64,6 +66,8 @@ def real_number_q(n):
     return type(n) in [int, float] or issubclass(type(n), (np.int8, np.int16, np.int32, np.int64,
                                                            np.uint8, np.uint16, np.uint32, np.uint64,
                                                            np.float16, np.float32, np.float64))
+
+
 if __name__ == "__main__":
     assert real_number_q(0)
     assert real_number_q(1.2)
@@ -85,6 +89,7 @@ def dictionary_append(d1, *args, make_copy=True):
     #              then d1 will be modified
     # Outputs: A dictionary with the same keys, but the values are the values from args appended to the values of d1
     # Note: The keys in d1 and args MUST match, and all of the values MUST be lists.
+    # This was intended to be used when loading multiple binary files
     if make_copy:
         d1 = deepcopy(d1)
     if len(args) == 0:
@@ -107,6 +112,8 @@ def dictionary_append(d1, *args, make_copy=True):
                 # print("DEBUG:", k, d1[k].shape, v.shape) # Uncomment this line to help you debug your dictionaries
                 d1[k] = np.append(d1[k], v, axis=0)  # <-- If we have numpy arrays
     return d1
+
+
 if __name__ == "__main__":
     d1 = {"a": [1, 2, 3], "b": [6, 1, 2], "c": [0, 0, 1]}
     d2 = {"a": [6, 2], "b": [1, 2], "c": [9, 2]}
@@ -117,7 +124,7 @@ if __name__ == "__main__":
     assert d1 is not dictionary_append(d1, d2, make_copy=True) == {"a": [1, 2, 3, 6, 2], "b": [6, 1, 2, 1, 2],
                                                                    "c": [0, 0, 1, 9, 2]}
     assert dictionary_append(d1, d3, make_copy=True) == d1
-    assert d1 is dictionary_append(d1, d3, make_copy=False)
+    assert d1 is dictionary_append(d1, d3, make_copy=False)  # is checks to see if it refers to the same loc. in memory
     try:
         dictionary_append(d1, d4, make_copy=True)
     except KeyError:
@@ -132,6 +139,8 @@ def sort_runs(arr, reverse=False):
     # Outputs: A natural-ish sorted version that puts the dates in order and the run numbers for each date in order
     s = sorted([np.int32(runid.split("_")) for runid in arr], key=operator.itemgetter(0, 1), reverse=reverse)
     return ["_".join(np.str(runid).strip("[]").split()) for runid in s]
+
+
 if __name__ == "__main__":
     test_array = []
     for i in range(20):
@@ -168,12 +177,13 @@ def get_runs(dir, search_for="folders", do_sort=True, reverse=False):
     if do_sort:
         return sort_runs(out, reverse=reverse)
     return out
+
+
 if __name__ == "__main__":
     file_dir = "/coupp/data/home/coupp/HumanGetBub_output_SBC-17/"
     folder_dir = "/pnfs/coupp/persistent/grid_output/SBC-17/output"
     print(get_runs(file_dir, search_for="files", do_sort=True))
     print(get_runs(folder_dir, search_for="folders", do_sort=True))
-
 
 
 def trim_runlist(arr, start=None, stop=None):
@@ -190,7 +200,7 @@ def trim_runlist(arr, start=None, stop=None):
     start_run_num = int(start.split("_")[1])
     stop_date = int(stop.split("_")[0])
     stop_run_num = int(stop.split("_")[1])
-    out = [ ]
+    out = []
     for run in arr:
         date = int(run.split("_")[0])
         run_num = int(run.split("_")[1])

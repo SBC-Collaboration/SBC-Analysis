@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #################################################################
 # condor jobs that were held
 #RUN_LIST_FILE="/pnfs/coupp/persistent/runlists/SBC-17/list_1499442343"
