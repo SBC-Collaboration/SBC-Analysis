@@ -32,9 +32,12 @@ if not single_ET:
     # threshold_fenceposts = np.array([2, 3.2, 4.3, 6.1, 8.1, 13],
     threshold_fenceposts = np.array([ 2.45 , 3.2 ],
                                     dtype=np.float64)
+    reparam_fenceposts = np.array([ 0.0 , 0.0 ],
+                                    dtype=np.float64)
 else:
     threshold_fenceposts = np.array([2.45], dtype=np.float64)
 #    threshold_fenceposts = np.array([1.8], dtype=np.float64)
+    reparam_fenceposts = np.array([0.0], dtype=np.float64)
 
 species_list = np.array([12, 19],
                         dtype=np.int32)
@@ -143,7 +146,9 @@ for i in range(len(neutron_data)):
 ## SbBe gamma dominate singles
 neutron_data[7]['mask'][:,0] = 0
     
-threshold_cut_low= 2.0
+#threshold_cut_low= 1.75
+#making it variable for easy adjusting
+threshold_cut_low= 1.9
 threshold_cut_high= 3.9
 
 if single_ET:
@@ -214,7 +219,7 @@ def PICOcalLL(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
                                         species_list.size])
     
     for i_th in range(threshold_fenceposts.shape[0]):
-        dEpts[0,i_th,:] = threshold_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
+        dEpts[0,i_th,:] = reparam_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
         dEpts[1:,i_th,:] = np.exp(dEpts_reparam[1:,i_th,:])
         
     Epts = np.cumsum(dEpts, axis=0)
@@ -229,7 +234,9 @@ def PICOcalLL(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
 
     total_chisq = np.sum( (eb - eb_bestfit) * (eb - eb_bestfit))
     
-    if not CheckCarbon(Epts):
+    #from IPython.core.debugger import Tracer; Tracer()() 
+    
+    if not CheckParametrization(Epts):
         #temp = np.square(Epts[:,0,0]-Epts[:,0,1])
         #temp[temp>0]=0
         #total_chisq= total_chisq + np.sum(np.square(temp))*10
@@ -253,6 +260,9 @@ def PICOcalLL(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
 
         #from IPython.core.debugger import Tracer; Tracer()() 
         
+        print(this_chisq)
+        
+        
     return -0.5 * total_chisq
 
 
@@ -275,7 +285,7 @@ def PICOcalLL_prior(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
                                         species_list.size])
     
     for i_th in range(threshold_fenceposts.shape[0]):
-        dEpts[0,i_th,:] = threshold_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
+        dEpts[0,i_th,:] = reparam_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
         dEpts[1:,i_th,:] = np.exp(dEpts_reparam[1:,i_th,:])
     
     Epts = np.cumsum(dEpts, axis=0)
@@ -286,7 +296,7 @@ def PICOcalLL_prior(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
     
     total_chisq = np.sum( (eb - eb_bestfit) * (eb - eb_bestfit))
     
-    if not CheckCarbon(Epts):
+    if not CheckParametrization(Epts):
         #temp = np.square(Epts[:,0,0]-Epts[:,0,1])
         #temp[temp>0]=0
         #total_chisq= total_chisq + np.sum(np.square(temp))*10
@@ -314,7 +324,7 @@ def PICOcalLL_post(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
                                         species_list.size])
     
     for i_th in range(threshold_fenceposts.shape[0]):
-        dEpts[0,i_th,:] = threshold_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
+        dEpts[0,i_th,:] = reparam_fenceposts[i_th] + np.exp( dEpts_reparam[0,i_th,:])
         dEpts[1:,i_th,:] = np.exp(dEpts_reparam[1:,i_th,:])
     
     Epts = np.cumsum(dEpts, axis=0)
@@ -322,7 +332,7 @@ def PICOcalLL_post(theta, whichnuisance=np.ones(n_nuisance, dtype=np.bool)):
     #if not CheckEpts(Epts):
     #    return -np.inf
     
-    if not CheckCarbon(Epts):
+    if not CheckParametrization(Epts):
         return -np.inf
 
     xpts = Epts / threshold_fenceposts[:, np.newaxis]
@@ -424,7 +434,14 @@ def CheckEpts(Epts):
     return True
 
 ## mimicing CheckEpts for reparametrization version
-def CheckCarbon(Epts): 
+def CheckParametrization(Epts): 
+    
+    if np.any((Epts < threshold_fenceposts[:, np.newaxis]).ravel()):
+        return False
+
+    if np.any(np.diff(Epts, axis=1).ravel() < 0):
+        return False
+
     if np.any(np.diff(Epts, axis=2).ravel() > 0):
         return False
     
@@ -463,7 +480,7 @@ def SimulatedCounts(xpts, eb, i_exp, eb_1sig):
     ET_eff = neutron_data[i_exp]['E_T'] * np.exp(thr_rescale[:, 0])
     # ET_eff.shape = (m,)
 
-    p = EfficiencyInterpolation(neutron_sims[i_exp]['Er'],
+    p = EfficiencyInterpolation_nearest_neighbor(neutron_sims[i_exp]['Er'],
                                 neutron_sims[i_exp]['species'],
                                 ET_eff, xpts)
     # p.shape = (m, n), where n is number of recoils in sim
@@ -552,9 +569,10 @@ def EfficiencyInterpolation(E_r, s, E_T, xpts):
 
         Outputs: 2-D ndarray of nucleation probabilities, shape m, n
         '''
-
+    
     if threshold_fenceposts.size == 1:
         xps = xpts
+        
     else:
         ET_ix = np.searchsorted(threshold_fenceposts, E_T)
         # ET_ix.shape = (m,)
@@ -575,6 +593,44 @@ def EfficiencyInterpolation(E_r, s, E_T, xpts):
     E_ps = xps * E_T[:, np.newaxis]
     # E_ps.shape = (len(p_fenceposts), m, len(species_list))
 
+    # Now calculate probabilities for each species, threshold pair
+    p = np.zeros((E_T.size, E_r.size))
+    for i_ET in range(p.shape[0]):
+        for i_s, this_s in enumerate(species_list):
+            s_cut = (s == this_s)
+            p[i_ET, s_cut] = np.interp(E_r[s_cut],
+                                       E_ps[:, i_ET, i_s],
+                                       p_fenceposts,
+                                       left=0, right=1)
+    return p
+
+def EfficiencyInterpolation_nearest_neighbor(E_r, s, E_T, xpts):
+    ''' This calculates bubble nucleation efficiencies from xpts
+
+        Inputs: E_r, 1-D ndarray of recoil energies, length n
+                s,   1-D ndarray of recoil species, length n
+                E_T, 1-D ndarray of detector thresholds, length m
+                xpts, 3-D ndarray of E_r/E_T, shape is
+                len(p_fenceposts), len(threshold_fenceposts), len(species_list)
+
+        Outputs: 2-D ndarray of nucleation probabilities, shape m, n
+        '''
+ 
+    if threshold_fenceposts.size == 1:
+        xps = xpts
+        E_ps = xps * E_T[:, np.newaxis]
+    
+    ## adding a special case for 2 threshold interpolation
+    ## hardcode 2.8keV to separate two thresholds
+    else:
+        E_ps = np.zeros((len(p_fenceposts), len(E_T), len(species_list)))
+        
+        for i_Eth in range(len(E_T)):
+            i_neighbor = np.argmin((abs(E_T[i_Eth]-threshold_fenceposts)))            
+            xps = xpts[:,i_neighbor,:]
+            E_ps[:,i_Eth,:] = xps * E_T[i_Eth]
+                                   
+    # E_ps.shape = (len(p_fenceposts), m, len(species_list))           
     # Now calculate probabilities for each species, threshold pair
     p = np.zeros((E_T.size, E_r.size))
     for i_ET in range(p.shape[0]):
