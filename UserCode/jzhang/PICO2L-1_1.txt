@@ -1,0 +1,188 @@
+Event Specificatons
+
+General notes:
+
+Some files are referred to as being in the "Recon" file format -- these follow
+the specification laid out here:
+http://projects-docdb.fnal.gov:8080/cgi-bin/ShowDocument?docid=698
+
+Some files are referred to as being in the "Ntuple" file format -- these follow
+the specification laid out here:
+<link coming>
+
+--------
+PICO2L:1.0
+--------
+
+*********
+File List
+*********
+
+In the Run directory:
+
+DAQversion.txt      -   A single line of text giving the data format, followed by a newline, i.e. 'PICO2L:1.0'
+RunParameters.txt   -   A single line (ASCII) giving a handful of run parameters
+DAQ30l_Setup.xml    -   An xml (ASCII) file containing all DAQ settings for the run
+<runID>.txt         -   The concatenation of each event's 'Event.txt' file
+
+In the Event directory:
+
+Event.txt           -   A single line (ASCII) giving a quick event summary
+PLClog.txt          -   A "Recon" format file recording all PLC variables during the history of an event
+                          (beginning prior to expansion, through trigger)
+fastDAQ_<n>.bin     -   A set of "Ntuple" format files, one per digitizer board, with triggered digitizer data
+                          (piezos, dytran, beam spill, etc)
+fastDAQ_<n>_cal.txt -   A set of 1-line "Recon" format files, one per digitizer board, with information for interpreting
+                          the data in the fastDAQ_<n>.bin files
+slowDAQ_0.txt       -   A "Recon" format file with continuously digitized data (pressure histories, etc) from the cRIO
+cam<n>.txt          -   A set of flat text files, one per camera, giving frame numbers, frame skips, and pixel
+                          differences for the frames saved with the event
+cam<n>image<nnn>.bmp  -  Images saved with the event, standard bmp format.
+
+*******
+Formats
+*******
+
+
+## DAQversion.txt ##
+<name>:<major-version>.<minor-version>
+
+i.e., '60kg:1.0'
+These version names match the headings in this file
+
+
+## RunParameters.txt ##
+A flat text file with one line:
+
+run        NI_runtime   NI_basetime    svn_revision 
+%s         %.3f         %.3f           %d
+20100729_0 49645756.864 3313634400.000 58
+
+run          -   runID (YYYYMMDD_n)
+NI_runtime   -   NI timestamp (seconds since 0:00 UTC 1/1/1904) minus an offset (NI_basetime)
+NI_basetime  -   NI timestamp (seconds since 0:00 UTC 1/1/1904) subtracted from all reported timestamps,
+                   so that PAW users can read in the timestamps.
+svn_revision -   svn revision number for DAQsvn (returns -1 currently)
+
+
+## DAQ30l_Setup.xml ##
+XML format, this file may be loaded by DAQ30l to return settings to those identical to this run (modulo any
+DAQ code changes since that run).  For detailed description of contents, see DAQ documentation.
+
+
+## <runID>.txt ##
+## Event.txt ##
+A flat text file with 1 line (Event.txt) or 1 line per event (<runID.txt>)
+
+run          ev run_type trigger_main trigger_cameras trigger_PLC trigger_slowDAQ timestamp      mstick    Pset   livetime
+%12s         %d %d       %d           %d              %d          %d              %.3f           %d        %.3f   %.3f           
+  20100729_0 0  0        1            3               128         0               3363280261.070 535206861 45.000 28.530
+
+run             -   runID (YYYYMMDD_n)
+ev              -   Event number (starts at 0)
+run_type        -   Run type (0 for background, other codes indicate unique source configurations, see E-log)
+trigger_main    -   Trigger code from main loop -- 3 bits, from low to high,
+                      [Manual, Timeout, Auto_relaunch, EndRun]
+                      Manual - The 'Manual Trigger' button in the DAQ front panel triggered the event
+                      Timeout - The maximum livetime allowed for an event was reached
+                      Auto-relaunch - A critical module failed and the DAQ auto-relaunched
+                      EndRun - The EndRun button was clicked mid-compression, other files may not exist.
+trigger_cameras -   Trigger code from cameras -- up to 16 bits, from low to high, 
+                      [hCart DAQ cam0 cam1 cam2 ...]
+                      hCart - Triggers originating from the hydraulic cart
+                      DAQ - Triggers originating from the main DAQ loop (manual, timeout, etc)
+                      cam# - Trigger from image diff in given camera
+                    Note -- value >=4 indicates video trigger
+trigger_PLC     -   Trigger code from cRIO (PLC), one bit for each trigger condition, bits are high if that trigger was the 
+                      "first fault" triggering compression.  The order of bits is specified in DAQ30l_Setup.xml, but should
+                      not change between runs.  The current setup (which may be considered part of the PICO2L:1.0 definition) is,
+                      from low bit to high bit,
+                      [DAQfast DAQslow dP1 dP5 dP4 Pdiff P1_Pset P5_Pset P4_Pset P3_max P2_min TCPIP DAQDEAD]
+                      These trigger conditions correspond to:
+                      DAQfast - Hardware signal from DAQ for fast compression (usually video trigger)
+                      DAQslow - Hardware signal from DAQ for slow compression (e.g. timeout)
+                      dP1 - Positive jump in cart-output pressure
+                      dP5 - Positive jump in pressure-vessel pressure
+                      dP4 - Positive jump in inner-vessel pressure
+                      Pdiff - Absolute differential between inner- and pressure-vessels
+                      P1_Pset - Cart output is too far above pressure setpoint
+                      P5_Pset - Pressure vessel pressure is too far above pressure setpoint
+                      P4_Pset - Inner vessel pressure is too far above pressure setpoint
+                      P3_max - Low-pressure accumulator pressure too high
+                      P2_min - High-pressure accumulator pressure too low
+                      TCPIP - MODBUS signal to move to compressed state
+                      DAQDEAD - Clock line from DAQ has stopped, indicates DAQ is off/crashed
+trigger_slowDAQ -   No longer used (=0)
+timestamp       -   NI timestamp of trigger (see RunParameters.txt for timestamp defn)
+mstick          -   millisecond timer at trigger -- this loops every 2^32 milliseconds
+Pset            -   Pressure setpoint at time of trigger
+livetime        -   Time that the video trigger was active before trigger fired
+
+
+## PLClog.txt ##
+A "Recon" format file with one line every ~second of the event, and the following fields:
+run             -   runID (YYYYMMDD_n)
+ev              -   Event number (starts at 0)
+NItime          -   NI timestamp (see RunParameters.txt for definition)
+mstick_first    -   millisecond timer immediately before PLC query
+mstick_last     -   millisecond timer immediately after PLC query
+<PLC_variable>  -   These variable names are as listed in DAQ30l_Setup.xml in PLC/ModBus_Registers/Log/Name
+                      and also appear in the slow control mySQL database (with descriptions in that database).
+                      Matlab users may run SlowControlDisplay to see the list of variables and descriptions.
+
+
+## fastDAQ_<n>_cal.txt ##
+A "Recon" format file with one line, with fields
+run                -   runID (YYYYMMDD_n)
+ev                 -   Event number (starts at 0)
+dt                 -   time between samples (seconds)
+pretrigger_samples -   Number of pre-trigger samples
+<name>_offset      -   Offset for channel <name>, in volts (always 0 for PXI-6115)
+<name>_multiplier  -   Scale for channel <name>, in volts / ADC count
+
+where <name> is specified in DAQ30l_Setup.xml, and includes
+Piezo1, .., Piezo8, Dytran, NuMIspill  (not all of these are gauranteed to exist)
+
+
+## fastDAQ_<n>.bin ##
+An "Ntuple" format file with one line per digitizer sample and fields
+<name> 		   -  Binary (i.e. int16) ADC output for fast digitizer channel <name>
+
+where <name> is specified in DAQ30l_Setup.xml, and includes
+Piezo1, .., Piezo8, Dytran, NuMIspill  (not all of these are gauranteed to exist)
+
+
+## slowDAQ_0.txt ##
+A "Recon" format file with one line for every digitizer sample from slow-digitizer board n, with fields
+run             -   runID (YYYYMMDD_n)
+ev              -   Event number (starts at 0)
+elapsed_time    -   time of the sample relative to start of the acquisition (some time before expansion)
+<name>          -   Value in real units for input <name>, using calibrations saved in the cRIO settions,
+                      where <name> is specified in DAQ30l_Setup.xml, including PT4 (inner psia) and PT5
+                      (hydraulic psia)
+
+
+## cam<n>.txt ##
+A flat text file with one line per recorded frame, generated by camera <n>
+
+frame_number mstimer frame_skip msdiff pixdiff
+%d           %d      %d         %d     %d
+6139         263570  0          30     3
+6140         263600  0          30     12
+6141         263630  0          30     7
+
+frame_number    -   camera generated frame number (generally the same for all cameras, 
+                      but not gauranteed to be so, and not neccessarily a probly if it isn't)
+                      (Should increment by 1 each line, regardless of frame skips)
+mstimer         -   camera's millisecond timer for each frame, rolls over at 2^20
+frame_skip      -   Number of skipped frames since previous frame, determined by nominal CTIC framerate
+msdiff          -   milliseconds since previous frame
+pixdiff         -   number of pixels over threshold diffing with previous frame
+
+
+## cam<n>image<nnn>.bmp ##
+BMP images written by cameras.  First <n> in filename is camera number (starts at 0), second is frame number (also starts at 0).
+Camera number assigned to physical camera is set by DAQ30l_Setup.xml in conjuction with MAX.
+
+PGM can be read using imread in Matlab, and is understood by 'convert', 'display' and other ImageMagick tools, and is well
+documented (e.g. in Wikipedia...)

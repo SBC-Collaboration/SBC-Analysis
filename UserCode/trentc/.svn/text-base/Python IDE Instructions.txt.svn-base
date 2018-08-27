@@ -1,0 +1,45 @@
+#Author: Trent Cwiok
+
+##### Setting up a Python IDE #####
+Download Sublime Text 3 at (make sure to get the correct distribution for your system):
+
+http://www.sublimetext.com/3
+
+Sublime is just a text editor, but supports file types of almost any programming language.
+For Python, it is also capable of building your .py files and running them directly out of
+the text editor.  This can be done in either an interactions window, or set up to run in a
+new tab (if you want it to run in a new tab, contact me and I can find a time to set it up
+for you).
+
+Now that you have Sublime installed, open the editor and create a new file, under the "File"
+menu in the top-left.  The file type will likely default to "Plain Text".  You can check this
+in the bottom right-hand corner of the window.  In order to change this, simply click where
+it says the file type, and it should bring up a menu for you.  Select Python and when you
+save your file now, it should save with a .py extension.
+
+Now to setup Sublime for running Python code.  Under the 'View' menu in the top toolbar,
+select show console.  Next, copy the block of code between the asterisks into the console
+and hit enter to execute it.
+
+**********************
+import urllib.request,os,hashlib; h = '2915d1851351e5ee549c20394736b442' + '8bc59f460fa1548d1514676163dafc88'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)
+**********************
+
+You should now have the package control extension for Sublime.  Under 'Tools', open the Command
+Palette and begin typing 'Install Packages' until the module is brought up and click on it.
+Another text box should pop up, where you can begin to type.  Enter 'SublimeREPL', and click
+on the package when it shows up to install it.
+
+To test and make sure everything is properly installed, try executing any snippet of Python
+code.  If you lack creativity, just try 'print "Hello World"'(without the single quotes).
+Then, under tools, choose Build (or hit Ctrl/Cmd + B) to run your Python file.  The results
+should appear in an interactions window at the bottom.
+
+Now to install numpy, a Python library which we will be using a lot this summer.  Back in
+the Command Palette, find 'Install Packages' again, open it, and then search for 'Anaconda'.
+Click the package to install it.  It will open up a page with some documentation concerning
+the Anaconda distribution, which you can close out of whenever you please.  You should now
+have access to all scientific computing packages contained in Anaconda, including numpy.
+
+If you have any issues, find a time to sit down with me and I can troubleshoot any problems
+you are having.

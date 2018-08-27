@@ -1,0 +1,303 @@
+#By Allison Grimsted
+#June 2016
+
+'''
+Roadmap:
+	-main
+	-Functions called by main:
+		-scale
+		-make_dictinary
+	-Functions called by make_dictionary
+		-integrate
+		-half_integral_time
+		-integral_end_time
+		-integral_start_time
+		-total_time
+		-max_time
+		-mean
+		-std_dev
+	-Called by secondary functions:
+		-low_lim_minimum
+		-up_lim_minimum
+		-minimum index
+		-time
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from SBCcode.DataHandling.ReadBinary import ReadBlock as rb
+
+
+#loads binary file
+#print "Loading PMT Traces"
+#dic=rb('PMTtraces20160622_0_4.bin')
+#print "done loading PMT traces"
+
+
+def main (event):
+	default_output = dict(t0=np.float64(-1),bubblebigness=np.array([-99, -99], dtype=np.float64), bubblebrightness=np.float64(-1))
+
+	if not (event['fastDAQ']['loaded'] and event['PMTtraces']['loaded']):
+		return default_output
+
+	else: 
+		dic = event['PMTtraces']
+		lost_samples=dic['lost_samples'][:, 0]
+		base_vals=80
+		minimum=-126
+		maximum=127
+
+		#finds the global minimum for the number of good samples. 
+		lost_min=np.min(lost_samples)
+		
+		scaled=scale(dic['v_offset'], dic['v_scale'], dic['traces'], minimum, maximum, lost_min)
+		d=make_dictionary(dic['dt'][0][0], base_vals, lost_min, maximum, scaled)
+
+		#for graphing:
+		'''
+		dt=dic['dt'][0][0]
+		x=time(dt, lost_min)
+		plt.plot(x, scaled[1])
+		plt.show()
+		'''
+
+		return d 
+	
+
+
+def scale (v_offset, v_scale, traces, minimum, maximum, lost_min):
+	#picks fine or course set of data, multiples by v_scale and adds v_offset.
+	#returns a 2D array. 
+
+	#creates an array to choose whether to use the fine or course data
+
+	#slices the arrays to only include the good values. 
+	good_samples=np.zeros((len(traces), lost_min), dtype=float, order='C')
+	for i in range(len(traces)):
+		for j in range(lost_min):
+			index=0
+			if traces[i][:, 0][j]<=minimum or traces[i][:, 0][j]>=maximum:
+				index=1
+			good_samples[i][j]=traces[i][j][index]*v_scale[i][index]+v_offset[i][index]
+
+	return good_samples
+
+def make_dictionary (dt, base_vals, lost_min, max_val, arr):
+	#creates a dictionary for values to be written to a file. 
+
+	d={}
+
+	#declares arrays to be associated with a key. 
+	average=np.zeros(len(arr))
+	stand=np.zeros(len(arr))
+	area_specific=np.zeros(len(arr))
+	area_total=np.zeros(len(arr))
+	height=np.zeros(len(arr))
+	half_time_specif=np.zeros(len(arr))
+	half_time_tot=np.zeros(len(arr))
+	integral_end_time_speci=np.zeros(len(arr))
+	tot_time=np.zeros(len(arr))
+	max_t=np.zeros(len(arr))
+
+	
+	for i in range(len(arr)):
+		avg=mean(base_vals, arr[i])
+		std=std_dev(base_vals, arr[i])
+
+		#fills arrays
+		average[i]=mean(base_vals, arr[i])
+		stand[i]=std_dev(base_vals, arr[i])
+		area_specific[i]=integrate(dt, avg, low_lim_minimum((avg-3*std), arr[i]), up_lim_minimum(avg, arr[i]), arr[i])
+		area_total[i]=integrate(dt, avg, 0, len(arr[i])-1, arr[i])
+		height[i]=(avg-np.min(arr[i]))
+		half_time_specif[i]=half_integral_time(dt, avg, low_lim_minimum((avg-3*std), arr[i]), up_lim_minimum(avg, arr[i]), arr[i])
+		half_time_tot[i]=half_integral_time(dt, avg, 1, (len(arr[i])-2), arr[i])
+		integral_end_time_speci[i]=integral_end_time(dt, avg, up_lim_minimum(avg, arr[i]), arr[i])
+		tot_time[i]=total_time(dt, lost_min)
+		max_t[i]=max_time(dt, max_val, arr[i])
+
+	#fills dictionary
+	d.update({"PMTpulse_mean": average})
+	d.update({"PMTpulse_Std_Dev":stand})
+	d.update({"PMTpulse_area_specific":area_specific})
+	d.update({"PMTpulse_area_total":area_total})
+	d.update({"PMTpulse_height":height})
+	d.update({"PMTpulse_half_time_specif":half_time_specif})
+	d.update({"PMTpulse_half_time_tot":half_time_tot})
+	d.update({"PMTpulse_integral_end_time_speci":integral_end_time_speci})
+	d.update({"PMTpulse_tot_time": tot_time})
+	d.update({"PMTpulse_max_voltage_time":max_t})
+
+
+	return d 
+
+def integrate(dt, base_line, low_lim, up_lim, y):
+	#this function assumes that the derivative of the line between two values of dt is constant. 
+	#calculates the the area between the values at the baseline closest to the largest minimum. 
+
+	#determines the area of the right triangle between the baseline and the index of the closest value to the baseline near the lower limit. 
+	base=base_line-y[low_lim]
+	height=0
+	if (y[low_lim]-y[low_lim-1]) != 0:
+		height=(float(y[low_lim]-base_line))/(y[low_lim]-y[low_lim-1])*dt
+	area_low=0.5*base*height
+
+	#finds the area of the right triangle between the baseline and the index of the closest value to the base line near the upper limit. 
+	area_up=0
+	if up_lim != len(y)-1:
+		h=0
+		if (y[up_lim+1]-y[up_lim]) != 0: 
+			h=(base_line-y[up_lim])*dt/(y[up_lim+1]-y[up_lim])
+		b=base_line-y[up_lim]
+		area_up=0.5*h*b
+
+	#finds the area between the two limits found. 
+	total=0
+	for i in range(low_lim, up_lim):
+		total+=abs(0.5*dt*((base_line-y[i])+(base_line-y[i+1])))
+	summa=total+area_low+area_up
+
+	return summa 
+
+def half_integral_time (dt, base_line, low_lim, up_lim, y):
+	#finds the time when 50% of the light (the integral) has come through
+	val=0.5*integrate(dt, base_line, low_lim, up_lim, y)
+	t_sum=0
+	a_left=val
+	i=low_lim
+	t_sum=dt*low_lim
+
+	#determines the area of the right triangle between the baseline and the index of the closest value to the baseline near the lower limit. 
+	base=base_line-y[low_lim]
+	height=0
+	if (y[low_lim]-y[low_lim-1]) != 0: 
+		height=(float(y[low_lim]-base_line))/(y[low_lim]-y[low_lim-1])*dt
+	area_low=0.5*base*height
+
+	a_left=a_left-area_low
+	
+	while i<up_lim:
+		area=0.5*dt*((base_line-y[i])+(base_line-y[i+1]))
+		a_left=a_left-0.5*dt*((base_line-y[i])+(base_line-y[i+1]))
+		if a_left < 0:
+			a_left=a_left + 0.5*dt*((base_line-y[i])+(base_line-y[i+1]))
+			break
+		else:
+			i+=1
+	
+	if (i-1-low_lim)> (-1):
+		t_sum+=(i-1-low_lim)*dt
+
+	#calculates time for smaller piece of area. 
+	area_needed=a_left 
+	radicand=float((2*dt*y[i]-2*base_line*dt)**2 - 8*area_needed*dt*(y[i+1]-y[i]))
+	square_root=float(abs(radicand)**0.5)
+	h1=0
+	h2=0
+	if (2*y[i+1]-2*y[i]) != 0:
+		h1=float(-1*square_root+2*base_line*dt-2*dt*y[i])/(2*y[i+1]-2*y[i])
+		h2=float(square_root+2*base_line*dt-2*dt*y[i])/(2*y[i+1]-2*y[i])
+	h=h2
+	if h2>dt or h2<0:
+		h=h1  
+	t_sum+=h
+	return t_sum
+def integral_end_time(dt, base_line, up_lim, y):
+	#finds the time when all of the light has come through. 
+	time=dt*up_lim
+	if up_lim != len(y)-1:
+		time+=(base_line-y[up_lim])*dt/(y[up_lim+1]-y[up_lim])
+	return time 
+def integral_start_time(dt, low_lim):
+	#finds the time when the light starts coming in. 
+	time=low_lim*dt
+	return time 
+def total_time(dt, lost_min):
+	#finds the time of the whole pulse
+	time=dt*lost_min
+	return time 
+def max_time(dt, max_val, y):
+	#returns the time when the voltage spikes. 
+	#if there is not a value over the max, the function returns -1. 
+	time=-1
+	if y[np.argmax(y)]>max_val:
+		time=dt*np.argmax(y)
+	return time
+
+def mean(base_vals, y):
+	#returns the mean value of the base line values
+	
+	values=y[:base_vals]
+	
+	mean=np.mean(values)
+	return mean 
+def std_dev(base_vals, y): 
+	#returns the standard deviation of the base line values. 
+
+	values=y[:base_vals]
+
+	sigma=np.std(values)
+	return sigma
+
+def low_lim_minimum(base_line, y):
+	'''finds the index of the lower limit by finding the first value to the left of the minimum
+	that returns to the baseline''' 
+	
+	index=minimum_index(y)
+	low_lim=0
+	j=index
+	caught=False
+	while caught==False and j>1:
+		if base_line==y[j-1]:
+			caught=True
+			low_lim=j
+		elif base_line<y[j-1] and base_line>y[j]:
+			low_lim=j
+			caught=True
+		else:
+			j-=1
+	return low_lim 
+def up_lim_minimum(base_line, y):
+	index=minimum_index(y)
+	'''finds the index of the upper limit by finding the first value to the right of the minimum
+	that returns to the baseline'''
+	up_lim=0
+	k=index
+	found=False
+	if y[len(y)-1]<base_line:
+		caught=True
+		up_lim=len(y)-1
+	while found==False and k<(len(y)-1):
+		if base_line==y[k+1]:
+			found=True
+			up_lim=k
+		elif base_line<y[k+1] and base_line>y[k]:
+			up_lim=k
+			found=True
+		else:
+			k+=1
+	return up_lim
+
+def minimum_index(y): 
+	#finds the index of the minimum
+
+	minimum=np.min(y)
+	i=0
+	index=0
+	found=False
+	while found==False and i<len(y):
+		if y[i]==minimum:
+			found=True
+			index=i 
+		i+=1
+	return index 
+
+def time(dt, maximum): 
+	#time_elapsed is a list that contains time values based on dt
+	time_elapsed=[]
+	for i in range (maximum):
+		time_elapsed.append(i*dt)
+
+	return time_elapsed
+
+
