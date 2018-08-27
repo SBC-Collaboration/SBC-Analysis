@@ -9,5 +9,5 @@ Tools/FermiGrid/jobsub_*
 
 
 # Put your usercode stuff that you dont want to commit here
-UserCode/John/Plots/*
-UserCode/mjn693/*
+UserCode/John/Plots/
+UserCode/mjn693/
