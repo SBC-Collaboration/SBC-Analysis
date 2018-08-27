@@ -1,36 +1,39 @@
 import os
 import re
 import shutil
-import numpy as np
-import collections
 import time
-from ..DataHandling.GetSBCEvent import GetEvent as get_event
-from ..DataHandling.WriteBinary import WriteBinaryNtupleFile as wb
-# from .PMTPulseAnalysis import PMTpa as pmtpa
-from .PMTComprehensiveModule import PMTcm as pmtpa
-# from .AcousticAnalysis import main as aa
-from .AlternateAcousticT0 import T0finder as aa
-from .AlternateAcousticT0 import T0finder2 as aa2
-from .AnalyzeDytran import dytranAnalysis as da
-from .PTData import main as ptd
-from .PMTfastDAQalignment import PMTandFastDAQalignment as pmtfda
-from .TimingAnalysis import TimingAnalysis as ta
-from .EventAnalysis import EventAnalysis as eva
-from .PMTphe_counter import PMTphea as pmtphea
-from .PMTPulseFinder import PMTPulseFinder as pmtpf
-from .PMTPulseFinder import PMTPulseFinder2 as pmtpf2
-from .ImageAnalysis import BubbleFinder
-# import ipdb
-# import psutil
 
+import numpy as np
+import copy
+import numpy.matlib
+
+from SBCcode.AnalysisModules.AnalyzeDytran import dytranAnalysis as da
+from SBCcode.AnalysisModules.EventAnalysis import EventAnalysis as eva
+# from SBCcode.AnalysisModules.ImageAnalysis import BubbleFinder
+from SBCcode.AnalysisModules.AcousticT0 import AcousticAnalysis as aa
+from SBCcode.AnalysisModules.PMTComprehensiveModule import PMTcm as pmtpa
+from SBCcode.AnalysisModules.PMTfastDAQalignment import PMTandFastDAQalignment as pmtfda
+from SBCcode.AnalysisModules.PTData import main as ptd
+from SBCcode.AnalysisModules.TimingAnalysis import TimingAnalysis as ta
+from SBCcode.DataHandling.GetSBCEvent import GetEvent as get_event
+from SBCcode.DataHandling.WriteBinary import WriteBinaryNtupleFile as wb
+
+# For Acoustic t0 test
+from SBCcode.UserCode.John.NewT0 import calculate_t0 as calculate_t0
 
 def BuildEventList(rundir, first_event=0, last_event=-1):
+    # Inputs:
+    #   rundir: Directory for the run
+    #   first_event: Index of first event
+    #   last_event: Index of last_event
+    # Outputs: A sorted list of events from rundir
+    # Possible Issues: If we ever move to a different naming scheme, this needs to be re-written.
     eventdirlist = os.listdir(rundir)
     eventdirlist = filter(lambda fn: (not re.search('^\d+$', fn) is None) and
-                          os.path.isdir(os.path.join(rundir, fn)),
+                                     os.path.isdir(os.path.join(rundir, fn)),
                           eventdirlist)
     eventdirlist = filter(lambda fn: os.path.exists(os.path.join(rundir,
-                          *[fn, 'Event.txt'])), eventdirlist)
+                                                                 *[fn, 'Event.txt'])), eventdirlist)
     eventlist = np.intp(list(eventdirlist))
     eventlist = eventlist[eventlist >= first_event]
     if last_event >= 0:
@@ -38,543 +41,22 @@ def BuildEventList(rundir, first_event=0, last_event=-1):
     return np.sort(eventlist)
 
 
-def RunLevel1AnalysisModules(modulename, rundir, eventlist=None,
-                             datafilelist=['~'], outputdir='.',
-                             **moduleparams):
-    if eventlist is None:
-        eventlist = BuildEventList(rundir)
-
-    output_dict = [modulename(get_event(rundir, ev, *datafilelist),
-                   **moduleparams) for ev in eventlist]
-    wb(output_dict)
-    return
-
-
-def ProcessSingleRun_pmtfdaonly(rundir, dataset='SBC-2015', recondir='.'):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run, pmtfda only,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = BuildEventList(rundir)
-
+def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=None):
+    # Inputs:
+    #   rundir: Location of raw data
+    #   dataset: Indicator used for filtering which analyses to run
+    #   recondir: Location of recon data/where we want to output our binary files
+    #   process_list: List of analyses modules to run. example: ["acoustic", "event", ""]
+    # Outputs: Nothing. Saves binary files to recondir.
+    if process_list is None:
+        process_list = []  # This is needed since lists are mutable objects. If you have a default argument
+                           # as a mutable object, then the default argument can *change* across multiple
+                           # function calls since the argument is created ONCE when the function is defined.
     runname = os.path.basename(rundir)
     runid_str = runname.split('_')
     runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
-
-    if not os.path.isdir(run_recondir):
-        os.mkdir(run_recondir)
-
-    if dataset == 'SBC-2015':
-        loadlist = ['fastDAQ', 'PMTtraces', 'event']
-    else:
-        loadlist = ['~']
-
-    pmtfda_out = []
-
-    for ev in eventlist:
-        t0 = time.time()
-        print('Starting event ' + str(ev))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # PMTfastDAQalignment only
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            pmtfda_out.append(pmtfda(thisevent))
-            pmtfda_out[-1]['runid'] = runid
-            pmtfda_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('PMT - fastDAQ alignment analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if dataset == 'SBC-2015':
-        # pdb.set_trace()
-        wb(os.path.join(run_recondir,
-                        'PMTfastDAQalignment_' + runname + '.bin'), pmtfda_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-
-    return
-
-
-def ProcessSingleRun_phecountingonly(rundir, dataset='SBC-2015', recondir='.'):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run, phe counting only,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = BuildEventList(rundir)
-
-    runname = os.path.basename(rundir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
-
-    if not os.path.isdir(run_recondir):
-        os.mkdir(run_recondir)
-
-    if dataset == 'SBC-2015' or dataset == 'SBC-2017':
-        loadlist = ['PMTtraces']
-    else:
-        loadlist = ['~']
-
-    phe_out = []
-
-    for ev in eventlist:
-        t0 = time.time()
-        print('Starting event ' + os.path.join(rundir, str(ev)))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # PHE Analysis only
-        t1 = time.time()
-        if dataset == 'SBC-2015' or dataset =='SBC-2017' and True:
-            phe_out.append(pmtphea(thisevent))
-            phe_out[-1]['runid'] = runid +\
-                np.zeros((phe_out[-1][list(phe_out[-1].keys()
-                                           )[0]].shape[0], 2),
-                         dtype=np.int32)
-            phe_out[-1]['ev'] = npev +\
-                np.zeros(phe_out[-1][list(phe_out[-1].keys())[0]].shape[0],
-                         dtype=np.int32)
-        et = time.time() - t1
-        print('PHE analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if dataset == 'SBC-2015' or dataset == 'SBC-2017':
-        # pdb.set_trace()
-        wb(os.path.join(run_recondir,
-                        'PMTpheAnalysis_' + runname + '.bin'), phe_out,
-           rowdef=7, initialkeys=['runid', 'ev'], drop_first_dim=True)
-
-    return
-
-
-def ProcessSingleRun_historyonly(rundir, dataset='SBC-2015', recondir='.'):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run, pmtfda only,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = BuildEventList(rundir)
-
-    runname = os.path.basename(rundir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
-
-    if not os.path.isdir(run_recondir):
-        os.mkdir(run_recondir)
-
-    if dataset == 'SBC-2015':
-        loadlist = ['slowDAQ']
-    else:
-        loadlist = ['~']
-
-    history_out = []
-
-    for ev in eventlist:
-        t0 = time.time()
-        print('Starting event ' + str(ev))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # History Analysis only
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            history_out.append(ptd(thisevent,
-                                   edge=np.arange(19.5, 101.5, 1,
-                                                  dtype=np.float64)))
-            history_out[-1]['runid'] = runid
-            history_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('History analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if dataset == 'SBC-2015':
-        # pdb.set_trace()
-        wb(os.path.join(run_recondir,
-                        'HistoryAnalysis_' + runname + '.bin'), history_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-
-    return
-
-
-def ProcessSingleRun(rundir, dataset='SBC-2015', recondir='.'):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = BuildEventList(rundir)
-
-    runname = os.path.basename(rundir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
-
-    if not os.path.isdir(run_recondir):
-        os.mkdir(run_recondir)
-
-    if dataset == 'SBC-2015':
-        loadlist = ['fastDAQ', 'slowDAQ', 'PMTtraces', 'event']
-    else:
-        loadlist = ['~']
-
-    event_out = []
-    pmtfda_out = []
-    pmt_out = []
-    dytran_out = []
-    acoustic_out = []
-    history_out = []
-    timing_out = []
-
-    for ev in eventlist:
-        t0 = time.time()
-        print('Starting event ' + str(ev))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # zeroth order of business:  copy event data
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            event_out.append(eva(thisevent))
-            event_out[-1]['runid'] = runid
-            event_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Event analysis:  ' + str(et) + ' seconds')
-
-        # PMTfastDAQalignment first
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            pmtfda_out.append(pmtfda(thisevent))
-            pmtfda_out[-1]['runid'] = runid
-            pmtfda_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('PMT - fastDAQ alignment analysis:  ' + str(et) + ' seconds')
-
-        # PMTtraces after pmtfda
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            pmt_out.append(pmtpa(thisevent,
-                           pmtfda=pmtfda_out[-1]))
-            pmt_out[-1]['runid'] = runid +\
-                np.zeros((pmt_out[-1][list(pmt_out[-1].keys()
-                                           )[0]].shape[0], 2),
-                         dtype=np.int32)
-            pmt_out[-1]['ev'] = npev +\
-                np.zeros(pmt_out[-1][list(pmt_out[-1].keys())[0]].shape[0],
-                         dtype=np.int32)
-        et = time.time() - t1
-        print('PMT pulse analysis:  ' + str(et) + ' seconds')
-
-        # acoustic analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            acoustic_out.append(aa(thisevent))
-            acoustic_out[-1]['runid'] = runid
-            acoustic_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Acoustic analysis:  ' + str(et) + ' seconds')
-
-        # dytran analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            dytran_out.append(da(thisevent))
-            dytran_out[-1]['runid'] = runid
-            dytran_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Dytran analysis:  ' + str(et) + ' seconds')
-
-        # timing analysis after acoustic and pmt
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            timing_out.append(ta(thisevent,
-                                 pmt_out[-1],
-                                 acoustic_out[-1]))
-            timing_out[-1]['runid'] = runid
-            timing_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Timing analysis:  ' + str(et) + ' seconds')
-
-        # history analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            history_out.append(ptd(thisevent,
-                                   edge=np.arange(19.5, 101.5, 1,
-                                                  dtype=np.float64)))
-            history_out[-1]['runid'] = runid
-            history_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('History analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if dataset == 'SBC-2015':
-        # pdb.set_trace()
-        wb(os.path.join(run_recondir,
-                        'EventAnalysis_' + runname + '.bin'), event_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(run_recondir,
-                        'PMTfastDAQalignment_' + runname + '.bin'), pmtfda_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(run_recondir,
-                        'PMTpulseAnalysis_' + runname + '.bin'), pmt_out,
-           rowdef=7, initialkeys=['runid', 'ev'], drop_first_dim=True)
-        wb(os.path.join(run_recondir,
-                        'AcousticAnalysis_' + runname + '.bin'), acoustic_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(run_recondir,
-                        'TimingAnalysis_' + runname + '.bin'), timing_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(run_recondir,
-                        'DytranAnalysis_' + runname + '.bin'), dytran_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(run_recondir,
-                        'HistoryAnalysis_' + runname + '.bin'), history_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-
-        if dataset == 'SBC-2015' and True:
-            human_gbub_dir = '/coupp/data/home/coupp/HumanGetBub_output_SBC-15'
-            if os.path.isdir(human_gbub_dir):
-                human_gbub_file = os.path.join(human_gbub_dir,
-                                               'HumanGetBub_' +
-                                               runname + '.bin')
-                if os.path.exists(human_gbub_file):
-                    shutil.copy(human_gbub_file, run_recondir)
-
-    return
-
-
-def ProcessEventList(eventlist_dict, datadir,
-                     dataset='SBC-2015', recondir='.'):
-    ''' The usual ProcessEventList script
-
-        This will do the full analysis for a list of events,
-        given in the eventlist_dict dictionary of runid and ev,
-        same as in the output binaries.
-        What it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = eventlist_dict['ev']
-
-    if dataset == 'SBC-2015':
-        loadlist = ['slowDAQ']
-    else:
-        loadlist = ['~']
-
-    pmt_out = []
-    dytran_out = []
-    acoustic_out = []
-    history_out = []
-    timing_out = []
-
-    for i_ev in range(eventlist.size):
-        ev = eventlist[i_ev]
-        runid = eventlist_dict['runid'][i_ev, :]
-        rundir = os.path.join(datadir,
-                              str(runid[0]) + '_' + str(runid[1]))
-
-        t0 = time.time()
-        print('Starting event ' + str(ev))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # PMTtraces first
-        t1 = time.time()
-        if dataset == 'SBC-2015' and False:
-            pmt_out.append(pmtpa(thisevent))
-            pmt_out[-1]['runid'] = runid +\
-                np.zeros((pmt_out[-1][list(pmt_out[-1].keys()
-                                           )[0]].shape[0], 2),
-                         dtype=np.int32)
-            pmt_out[-1]['ev'] = npev +\
-                np.zeros(pmt_out[-1][list(pmt_out[-1].keys())[0]].shape[0],
-                         dtype=np.int32)
-        et = time.time() - t1
-        print('PMT pulse analysis:  ' + str(et) + ' seconds')
-
-        # acoustic analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and False:
-            acoustic_out.append(aa(thisevent))
-            acoustic_out[-1]['runid'] = runid
-            acoustic_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Acoustic analysis:  ' + str(et) + ' seconds')
-
-        # dytran analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and False:
-            dytran_out.append(da(thisevent))
-            dytran_out[-1]['runid'] = runid
-            dytran_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Dytran analysis:  ' + str(et) + ' seconds')
-
-        # timing analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and False:
-            timing_out.append(pmtfda(thisevent))
-            timing_out[-1]['runid'] = runid
-            timing_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('Timing analysis:  ' + str(et) + ' seconds')
-
-        # history analysis
-        t1 = time.time()
-        if dataset == 'SBC-2015' and True:
-            history_out.append(ptd(thisevent))
-            history_out[-1]['runid'] = runid
-            history_out[-1]['ev'] = npev
-        et = time.time() - t1
-        print('History analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if dataset == 'SBC-2015':
-        # pdb.set_trace()
-        # wb(os.path.join(recondir, 'PMTpulseAnalysis.bin'), pmt_out,
-        #    rowdef=7, initialkeys=['runid', 'ev'], drop_first_dim=True)
-        # wb(os.path.join(recondir, 'AcousticAnalysis.bin'), acoustic_out,
-        #    rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        # wb(os.path.join(recondir, 'TimingAnalysis.bin'), timing_out,
-        #    rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        # wb(os.path.join(recondir, 'DytranAnalysis.bin'), dytran_out,
-        #    rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-        wb(os.path.join(recondir, 'HistoryAnalysis.bin'), history_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
-
-    return (acoustic_out, timing_out, dytran_out)
-
-
-
-def ProcessSingleRun_pmtpfonly(rundir, dataset='SBC-2017', recondir='.'):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run, pmtpa only,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    eventlist = BuildEventList(rundir)
-
-    runname = os.path.basename(rundir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
-
-    if not os.path.isdir(run_recondir):
-        os.mkdir(run_recondir)
-
-    base_samples=np.intp(80)
-    amp_gains = np.array([1, 1], dtype=np.float64)
-
-
-    if dataset == 'SBC-2015':
-        loadlist = ['PMTtraces']
-    elif dataset == 'SBC-2017':
-        loadlist = ['PMTtraces']
-        base_samples=np.intp(100)
-        amp_gains = np.array([1, 1], dtype=np.float64)
-    else:
-        loadlist = ['~']
-
-    pmtpa_out = []
-    # eventlist = [0]
-    for ev in eventlist:
-        t0 = time.time()
-        print('Starting event ' + os.path.join(rundir, str(ev)))
-        npev = np.array([ev], dtype=np.int32)
-        thisevent = get_event(rundir, ev, *loadlist)
-        print('Time to load event:  ' +
-              str(time.time() - t0) + ' seconds')
-
-        # PMTfastDAQalignment only
-        t1 = time.time()
-        if True:
-            pmtpa_out.append(pmtpf2(thisevent, base_samples, amp_gains=amp_gains))
-            pmtpa_out[-1]['runid'] = np.matlib.repmat(runid, pmtpa_out[-1]['iTrace'].shape[0], 1)
-            pmtpa_out[-1]['ev'] = np.matlib.repmat(npev, pmtpa_out[-1]['iTrace'].shape[0], 1)
-        et = time.time() - t1
-        print('PMT - pulse integration analysis:  ' + str(et) + ' seconds')
-
-        print('*** Full event analysis ***  ' +
-              str(time.time() - t0) + ' seconds')
-
-    if True:
-        #pdb.set_trace()
-        wb(os.path.join(run_recondir,
-                        'PMTPulseAnalysis_' + runname + '.bin'), pmtpa_out,
-           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=True)
-
-    return
-
-
-def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=[]):
-    ''' The usual ProcessSingleRun script
-
-        This will do the full analysis for a given run,
-        what it does is determined by the chamber argument,
-        where it puts it is determined by the recondir argument
-        '''
-
-    runname = os.path.basename(rundir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
-
-    if False:
-        run_recondir = os.path.join(recondir, runname)
-    else:
-        run_recondir = recondir
+    #run_recondir = os.path.join(recondir, runname)
+    run_recondir = recondir
 
     if not os.path.isdir(run_recondir):
         os.mkdir(run_recondir)
@@ -582,17 +64,17 @@ def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=[])
     if dataset == 'SBC-2017':
         loadlist = []
         for process in process_list:
-            if str.lower(process) == 'event':
+            if process.lower().strip() == 'event':
                 loadlist.append('event')
-            elif str.lower(process) == 'images':
+            elif process.lower().strip() == 'images':
                 loadlist.append('images')
-            elif str.lower(process) == 'history':
+            elif process.lower().strip() == 'history':
                 loadlist.append('slowDAQ')
-            elif any(str.lower(process)==x for x in['dytran', 'acoustic']):
+            elif any(process.lower().strip() == x for x in ['dytran', 'acoustic']):
                 loadlist.append('fastDAQ')
-            elif str.lower(process) == 'pmtpf':
-                loadlist.append('PMTtraces')
-            elif any(str.lower(process) == x for x in ['pmtfda', 'pmt', 'timing']):
+            # elif process.lower().strip() == 'pmtpf':
+            #     loadlist.append('PMTtraces')
+            elif any(process.lower().strip() == x for x in ['pmtfda', 'pmt', 'timing']):
                 loadlist.append('fastDAQ')
                 loadlist.append('PMTtraces')
         loadlist = list(set(loadlist))
@@ -606,11 +88,21 @@ def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=[])
     acoustic_out = []
     history_out = []
     timing_out = []
-    pmtpf_out = []
     image_out = []
 
+    event_default = eva(None)
+    pmtfda_default = pmtfda(None)
+    pmt_default = pmtpa(None)
+    dytran_default = da(None)
+    acoustic_default = aa(None, None)
+    history_default = ptd(None)
+    timing_default = ta(None, None, None)
+    # image_default = BubbleFinder(None, None, None ,None, None, None)
+
+    process_list = [p.lower().strip() for p in process_list]
     print("Starting run " + rundir)
     eventlist = BuildEventList(rundir)
+
     for ev in eventlist:
         t0 = time.time()
         print('Starting event ' + runname + '/' + str(ev))
@@ -619,180 +111,209 @@ def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=[])
         print('Time to load event:  '.rjust(35) +
               str(time.time() - t0) + ' seconds')
 
-        if thisevent['PMTtraces']['traces'].nbytes > 500*1024**2: # 500MB, skip
-            thisevent['PMTtraces']['traces'] = np.array([])
-            thisevent['PMTtraces']['loaded'] = False
+        # if thisevent["PMTtraces"]["loaded"]:
+        #     if thisevent['PMTtraces']['traces'].nbytes > 500 * 1024 ** 2:  # 500MB, skip
+        #         thisevent['PMTtraces']['traces'] = np.array([])
+        #         thisevent['PMTtraces']['loaded'] = False
 
-        for process in process_list:
-            if str.lower(process) == 'event':
-                # zeroth order of business:  copy event data
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
+        if "event" in process_list:
+            # zeroth order of business:  copy event data
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
                     event_out.append(eva(thisevent))
-                    event_out[-1]['runid'] = runid
-                    event_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('Event analysis:  '.rjust(35) + str(et) + ' seconds')
+                except:
+                    event_out.append(copy.deepcopy(event_default))
+                event_out[-1]['runid'] = runid
+                event_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('Event analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'pmtfda':
-                # PMTfastDAQalignment first
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
+        if "pmtfda" in process_list:
+            # PMTfastDAQalignment
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
                     pmtfda_out.append(pmtfda(thisevent))
-                    pmtfda_out[-1]['runid'] = runid
-                    pmtfda_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('PMT - fastDAQ alignment analysis:  '.rjust(35) + str(et) + ' seconds')
+                except:
+                    pmtfda_out.append(copy.deepcopy(pmtfda_default))
+                pmtfda_out[-1]['runid'] = runid
+                pmtfda_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('PMT - fastDAQ alignment analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'pmt':
-                # pid = psutil.Process(os.getpid())
-                # print(pid.memory_info().vms/1024.**3)
-                # print(thisevent['PMTtraces'].nbytes*4/1024.**3)
-                # ipdb.set_trace()
-
-                # PMTtraces after pmtfda
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
-                    pmt_out.append(pmtpa(thisevent,
-                                         pmtfda=pmtfda_out[-1]))
-                    pmt_out[-1]['runid'] = runid + \
-                                           np.zeros((pmt_out[-1][list(pmt_out[-1].keys()
-                                                                      )[0]].shape[0], 2),
+        if "pmt" in process_list:
+            t1 = time.time()
+            # PMTtraces after pmtfda
+            if dataset == 'SBC-2017':
+                try:
+                    pmt_out.append(pmtpa(thisevent, pmtfda=pmtfda_out[-1]))
+                except:
+                    pmt_out.append(copy.deepcopy(pmt_default))
+                pmt_out[-1]['runid'] = runid + np.zeros((pmt_out[-1][list(pmt_out[-1].keys())[0]].shape[0], 2),
+                                                        dtype=np.int32)
+                pmt_out[-1]['ev'] = npev + np.zeros(pmt_out[-1][list(pmt_out[-1].keys())[0]].shape[0],
                                                     dtype=np.int32)
-                    pmt_out[-1]['ev'] = npev + \
-                                        np.zeros(pmt_out[-1][list(pmt_out[-1].keys())[0]].shape[0],
-                                                 dtype=np.int32)
-                et = time.time() - t1
-                print('PMT pulse analysis:  '.rjust(35) + str(et) + ' seconds')
+            et = time.time() - t1
+            print('PMT pulse analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'acoustic':
-                # acoustic analysis
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
-                    acoustic_out.append(aa2(thisevent))
-                    acoustic_out[-1]['runid'] = runid
-                    acoustic_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('Acoustic analysis:  '.rjust(35) + str(et) + ' seconds')
+        if "acoustic" in process_list:
+            # Acoustic analysis
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                tau_peak = 0.0025884277467056165  # <-- This comes from TauResultAnalysis.py (J.G.)
+                tau_average = 0.0038163479219674467  # <-- This also ^^
+                lower_f = 20000
+                upper_f = 40000
+                piezo_fit_type = 0
+                try:
+                    acoustic_out.append(aa(ev=thisevent, tau=tau_average, piezo_fit_type=piezo_fit_type,
+                                           corr_lowerf=lower_f, corr_upperf=upper_f))
+                except:
+                    acoustic_out.append(copy.deepcopy(acoustic_default))
+                acoustic_out[-1]['runid'] = runid
+                acoustic_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('Acoustic analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'dytran':
-                # dytran analysis
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
+        if "dytran" in process_list:
+            # Dytran analysis
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
                     dytran_out.append(da(thisevent))
-                    dytran_out[-1]['runid'] = runid
-                    dytran_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('Dytran analysis:  '.rjust(35) + str(et) + ' seconds')
+                except:
+                    dytran_out.append(copy.deepcopy(dytran_default))
+                dytran_out[-1]['runid'] = runid
+                dytran_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('Dytran analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'history':
-                # history analysis
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
+        if "history" in process_list:
+            # History analysis
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
                     history_out.append(ptd(thisevent,
                                            edge=np.arange(13.5, 101.5, 1,
                                                           dtype=np.float64), targetPT='PT6'))
-                    history_out[-1]['runid'] = runid
-                    history_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('History analysis:  '.rjust(35) + str(et) + ' seconds')
+                except:
+                    history_out.append(copy.deepcopy(history_default))
+                history_out[-1]['runid'] = runid
+                history_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('History analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'timing':
-                # timing analysis after acoustic and pmt
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
+        if "timing" in process_list:
+            # Timing analysis after acoustic and pmt
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
                     timing_out.append(ta(thisevent,
                                          pmt_out[-1],
                                          acoustic_out[-1]))
-                    timing_out[-1]['runid'] = runid
-                    timing_out[-1]['ev'] = npev
-                et = time.time() - t1
-                print('Timing analysis:  '.rjust(35) + str(et) + ' seconds')
+                except:
+                    timing_out.append(copy.deepcopy(timing_default))
+                timing_out[-1]['runid'] = runid
+                timing_out[-1]['ev'] = npev
+            et = time.time() - t1
+            print('Timing analysis:  '.rjust(35) + str(et) + ' seconds')
 
-            elif str.lower(process) == 'pmtpf':
-                # pmt pulse finder
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
-                    base_samples = np.intp(80)
-                    amp_gains = np.array([1, 1], dtype=np.float64)
+        # if "pmtpf" in process_list:
+        #     # pmt pulse finder
+        #     t1 = time.time()
+        #     if dataset == 'SBC-2017':
+        #         base_samples = np.intp(80)
+        #         amp_gains = np.array([1, 1], dtype=np.float64)
+        #
+        #         pmtpf_out.append(pmtpf2(thisevent, base_samples, amp_gains=amp_gains))
+        #         pmtpf_out[-1]['runid'] = np.matlib.repmat(runid, pmtpf_out[-1]['iTrace'].shape[0], 1)
+        #         pmtpf_out[-1]['ev'] = np.matlib.repmat(npev, pmtpf_out[-1]['iTrace'].shape[0], 1)
+        #     et = time.time() - t1
+        #     print('PMT - pulse finder analysis:  '.rjust(35) + str(et) + ' seconds')
 
-                    pmtpf_out.append(pmtpf2(thisevent, base_samples, amp_gains=amp_gains))
-                    pmtpf_out[-1]['runid'] = np.matlib.repmat(runid, pmtpf_out[-1]['iTrace'].shape[0], 1)
-                    pmtpf_out[-1]['ev'] = np.matlib.repmat(npev, pmtpf_out[-1]['iTrace'].shape[0], 1)
-                et = time.time() - t1
-                print('PMT - pulse finder analysis:  '.rjust(35) + str(et) + ' seconds')
-
-            elif str.lower(process) == 'images':
-                # image analysis
-                t1 = time.time()
-                if dataset == 'SBC-2017' and True:
-                    n_pre_trig = 12
-                    n_frames = 3
-                    adc_thresh = 15
-                    bubble_thresh = 4
+        if False and ("images" in process_list):
+            # image analysis
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                n_pre_trig = 12
+                n_frames = 3
+                adc_thresh = 15
+                bubble_thresh = 4
+                try:
                     image_out.append(BubbleFinder(rundir, ev,
-                                                  12, 3, 15, 4).bubbles)
-                et = time.time() - t1
-                print('Image analysis:  '.rjust(35) + str(et) + ' seconds')
+                                                  n_pre_trig, n_frames,
+                                                  adc_thresh, bubble_thresh))
+                except:
+                    image_out.append(copy.deepcopy(image_default))
+            et = time.time() - t1
+            print('Image analysis:  '.rjust(35) + str(et) + ' seconds')
 
         print('*** Full event analysis ***  '.rjust(35) +
               str(time.time() - t0) + ' seconds')
 
-    for process in process_list:
-        if str.lower(process) == 'event':
-            wb(os.path.join(run_recondir,
-                            'EventAnalysis_' + runname + '.bin'), event_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'pmtfda':
-            wb(os.path.join(run_recondir,
-                            'PMTfastDAQalignment_' + runname + '.bin'), pmtfda_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+    #for process in process_list:
+    if "event" in process_list:
+        wb(os.path.join(run_recondir,
+                        'EventAnalysis_' + runname + '.bin'), event_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'pmt':
-            wb(os.path.join(run_recondir,
-                            'PMTpulseAnalysis_' + runname + '.bin'), pmt_out,
-               rowdef=7, initialkeys=['runid', 'ev'], drop_first_dim=True)
+    if "pmtfda" in process_list:
+        wb(os.path.join(run_recondir,
+                        'PMTfastDAQalignment_' + runname + '.bin'), pmtfda_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'dytran':
-            wb(os.path.join(run_recondir,
-                            'DytranAnalysis_' + runname + '.bin'), dytran_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+    if "pmt" in process_list:
+        wb(os.path.join(run_recondir,
+                        'PMTpulseAnalysis_' + runname + '.bin'), pmt_out,
+           rowdef=7, initialkeys=['runid', 'ev'], drop_first_dim=True)
 
-        elif str.lower(process) == 'acoustic':
-            wb(os.path.join(run_recondir,
-                            'AcousticAnalysis_' + runname + '.bin'), acoustic_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+    if "dytran" in process_list:
+        wb(os.path.join(run_recondir,
+                        'DytranAnalysis_' + runname + '.bin'), dytran_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'history':
-            wb(os.path.join(run_recondir,
-                            'HistoryAnalysis_' + runname + '.bin'), history_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+    if "acoustic" in process_list:
+        wb(os.path.join(run_recondir,
+                        'AcousticAnalysis_' + runname + '.bin'), acoustic_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'timing':
-            wb(os.path.join(run_recondir,
-                            'TimingAnalysis_' + runname + '.bin'), timing_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+    if "history" in process_list:
+        wb(os.path.join(run_recondir,
+                        'HistoryAnalysis_' + runname + '.bin'), history_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
 
-        elif str.lower(process) == 'pmtpf':
-            wb(os.path.join(run_recondir,
-                            'PMTpulseFinder_' + runname + '.bin'), pmtpf_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=True)
-        elif str.lower(process) == 'images':
-            wb(os.path.join(recondir,
-                            'ImageAnalysis_' + runname + '.bin'), image_out,
-               rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=True)
+    if "timing" in process_list:
+        wb(os.path.join(run_recondir,
+                        'TimingAnalysis_' + runname + '.bin'), timing_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+
+    # if "pmtpf" in process_list:
+    #     wb(os.path.join(run_recondir,
+    #                     'PMTpulseFinder_' + runname + '.bin'), pmtpf_out,
+    #        rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=True)
+
+    if False and "images" in process_list:
+        wb(os.path.join(recondir,
+                        'ImageAnalysis_' + runname + '.bin'), image_out,
+                        rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=True)
 
     # copy handscan result
-    if dataset == 'SBC-2015':
-        human_gbub_dir = '/coupp/data/home/coupp/HumanGetBub_output_SBC-15'
-        if os.path.isdir(human_gbub_dir):
-            human_gbub_file = os.path.join(human_gbub_dir,
-                                           'HumanGetBub_' +
-                                           runname + '.bin')
-            if os.path.exists(human_gbub_file):
-                shutil.copy(human_gbub_file, run_recondir)
-
+    # if dataset == 'SBC-2015':
+    #     human_gbub_dir = '/coupp/data/home/coupp/HumanGetBub_output_SBC-15'
+    #     if os.path.isdir(human_gbub_dir):
+    #         human_gbub_file = os.path.join(human_gbub_dir,
+    #                                        'HumanGetBub_' +
+    #                                        runname + '.bin')
+    #         if os.path.exists(human_gbub_file):
+    #            shutil.copy(human_gbub_file, run_recondir)
     return
 
 
+
+if __name__ == "__main__":
+    ProcessSingleRun2(rundir="/bluearc/storage/SBC-17-data/20171007_3",
+                      recondir="/nashome/j/jgresl/Test/Actuals", # Use your own directory for testing~
+                      process_list = ["acoustic"])
+    pass

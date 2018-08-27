@@ -8,9 +8,11 @@ def PMTpa(ev,
           t_windows=np.float64([[0, 80], [100, 300], [301, 1000]]),
           bssup_thresh=np.float64(0.002),
           base_samples=np.intp(80),
-          pmtfda={'PMT_trigt0_sec': np.float64([-1]),
-                  'PMT_trigt0_frac': np.float64([-1])}
+          pmtfda=None # Changed declaration to non-mutable type. JG 9/13/17
           ):
+    if pmtfda is None:
+        pmtfda = {'PMT_trigt0_sec': np.float64([-1]),
+                  'PMT_trigt0_frac': np.float64([-1])}
     n_windows = t_windows.shape[0]
     default_output = dict(nPMThit=np.int32([-1]),
                           iPMThit=np.int32([-1]),

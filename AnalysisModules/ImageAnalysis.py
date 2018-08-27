@@ -1,6 +1,6 @@
 import os
 import re
-import cv2
+#import cv2
 import numpy as np
 import numpy.matlib as mat
 # from matplotlib import pyplot as plt
@@ -57,7 +57,7 @@ class Bubble(object):
         self.bubbles['theta'] = np.float32(self.bubbles['theta'])
         self.bubbles['mass'] = np.float32(self.bubbles['mass'])
         self.bubbles['ADCThresh'] = np.float32(self.bubbles['ADCThresh'])
-
+        return self
 
 def BuildImageList(runDir, ev):
     out = []
@@ -244,22 +244,25 @@ def FindBubbles(imageList, nPreTrigger, nBubbleFrame, meanFrames, stdFrames, ADC
 
 
 def BubbleFinder(runDir, ev, nPreTrigger, nFrames, ADCThresh, nBubbleSize):
-    imageList = BuildImageList(runDir, ev)
-    if len(imageList) > 0:
-        meanFrames, stdFrames = ComputeRefFrame(imageList, nPreTrigger)
-        Bub = FindBubbles(imageList, nPreTrigger, nFrames, meanFrames, stdFrames, ADCThresh, nBubbleSize)
-    else:
-        Bub = Bubble()
-        Bub.emptyBubble()
+    try:
+        imageList = BuildImageList(runDir, ev)
+        if len(imageList) > 0:
+            meanFrames, stdFrames = ComputeRefFrame(imageList, nPreTrigger)
+            Bub = FindBubbles(imageList, nPreTrigger, nFrames, meanFrames, stdFrames, ADCThresh, nBubbleSize)
+        else:
+            Bub = Bubble()
+            Bub.emptyBubble()
 
-    runname = os.path.basename(runDir)
-    runid_str = runname.split('_')
-    runid = np.int32(runid_str)
+        runname = os.path.basename(runDir)
+        runid_str = runname.split('_')
+        runid = np.int32(runid_str)
 
-    Bub.addRunEV(runid, ev)
-    Bub.convertDType()
+        Bub.addRunEV(runid, ev)
+        Bub.convertDType()
 
-    return Bub
+        return Bub.bubbles
+    except:
+        return Bubble().convertDType().bubbles # <-- Will return a 'default-output'
 
 
 def test():

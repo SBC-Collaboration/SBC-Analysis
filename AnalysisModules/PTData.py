@@ -183,58 +183,45 @@ def Tdata(dictionary, instrument):
     return (Tmin, Tavg, Tmax)
 
 
-def main(dictionary, edge=np.cumsum(np.ones(250)) - 1, targetPT='PT4'):
-    if not dictionary['slowDAQ']['loaded']:
-        print("Failed to load slowDAQ dictionary, process terminated.")
-        emptyTempData = np.zeros((8, 3), dtype=np.float64)
-        emptypump = np.zeros(2, dtype=np.float64)
-        emptypump_int = np.zeros(2, dtype=np.int32)
-        emptytime = np.zeros(1, dtype=np.float64)
-        emptybin = np.zeros((9, len(edge) - 1), dtype=np.float64)
-        emptyP = np.zeros(9, dtype=np.float64)
-        emptydict = {'PumpActiveCycle': emptypump_int,
-                     'PumpActiveTime': emptypump,
-                     'TempData': emptyTempData,
-                     'tEvent': emptytime,
-                     'tGood': emptytime,
-                     'PressureBins': emptybin,
+def main(dictionary, edge=np.cumsum(np.ones(88)) - 1, targetPT='PT4'):
+    ## Issues: The 88 above should be dynamically selected to match what len(temp["BinTimetrimPT1"]) evaluated to
+    ##         below. This will work *for now*...
+
+    default_output = {'PumpActiveCycle': np.zeros(2, dtype=np.int32),
+                     'PumpActiveTime': np.zeros(2, dtype=np.float64),
+                     'TempData': np.zeros((8, 3), dtype=np.float64),
+                     'tEvent': np.zeros(1, dtype=np.float64),
+                     'tGood': np.zeros(1, dtype=np.float64),
+                     'PressureBins': np.zeros((9, len(edge) - 1), dtype=np.float64),
                      'PressureEdge': edge,
-                     'EventPressure': emptyP}
-        return emptydict
-    temp = TrimAll(dictionary['slowDAQ'])
-    BinAll(temp, edge)
-    TempData = np.ndarray(shape=(8, 3), dtype=float, order='C')
-    for i in range(1, 9):
-        TempData[i - 1] = Tdata(dictionary['slowDAQ'], 'T' + str(i))
-    PBins = np.ndarray(shape=(9, len(temp['BinTimetrimPT1'])),
-                       dtype=float, order='C')
-    for i in range(1, 10):
-        PBins[i - 1] = temp['BinTimetrimPT' + str(i)]
-    PressData = np.zeros(9)
-    for i in range(1, 10):
-        PressData[i - 1] = Pevent(dictionary['slowDAQ'], 'PT' + str(i))
-    PAC = PumpActiveCycle(dictionary['slowDAQ'])
-    PAT = PumpActiveTime(dictionary['slowDAQ'])
-    EventTime = tEvent(dictionary['slowDAQ'])
-    GoodTime = tGood(dictionary['slowDAQ'], targetPT)
-    DataTrim = {'PumpActiveCycle': PAC,
-                'PumpActiveTime': PAT,
-                'TempData': TempData,
-                'tEvent': EventTime,
-                'tGood': GoodTime,
-                'PressureBins': PBins,
-                'PressureEdge': temp['Bintrim'+targetPT],
-                'EventPressure': PressData}
-    # print(ShowIndex(DataTrim))
-    # print(DataTrim['PressureBins'])
-    return DataTrim
-
-
-'''
-d = ReadFile('13/slowDAQ_0.txt')
-
-d['slowDAQ']=ReadFile('13/slowDAQ_0.txt')
-d['slowDAQ']['loaded'] = True
-
-r=main(d)
-'''
+                     'EventPressure':np.zeros(9, dtype=np.float64)}
+    try:
+        temp = TrimAll(dictionary['slowDAQ'])
+        BinAll(temp, edge)
+        TempData = np.ndarray(shape=(8, 3), dtype=float, order='C')
+        for i in range(1, 9):
+            TempData[i - 1] = Tdata(dictionary['slowDAQ'], 'T' + str(i))
+        PBins = np.ndarray(shape=(9, len(temp['BinTimetrimPT1'])),
+                           dtype=float, order='C')
+        for i in range(1, 10):
+            PBins[i - 1] = temp['BinTimetrimPT' + str(i)]
+        PressData = np.zeros(9)
+        for i in range(1, 10):
+            PressData[i - 1] = Pevent(dictionary['slowDAQ'], 'PT' + str(i))
+        PAC = PumpActiveCycle(dictionary['slowDAQ'])
+        PAT = PumpActiveTime(dictionary['slowDAQ'])
+        EventTime = tEvent(dictionary['slowDAQ'])
+        GoodTime = tGood(dictionary['slowDAQ'], targetPT)
+        DataTrim = {'PumpActiveCycle': PAC,
+                    'PumpActiveTime': PAT,
+                    'TempData': TempData,
+                    'tEvent': EventTime,
+                    'tGood': GoodTime,
+                    'PressureBins': PBins,
+                    'PressureEdge': temp['Bintrim'+targetPT],
+                    'EventPressure': PressData}
+        # print(ShowIndex(DataTrim))
+        # print(DataTrim['PressureBins'])
+        return DataTrim
+    except:
+        return default_output

@@ -12,14 +12,13 @@ def EventAnalysis(ev):
                           Event_Pset=np.float64(-1),
                           Event_livetime=np.float64(-1)
                           )
-
-    if not ev['event']['loaded']:
+    try:
+        if not ev['event']['loaded']:
+            return default_output
+        out = default_output
+        for k in ev['event']:
+            if not (k == 'loaded'):
+                out['Event_' + k] = ev['event'][k]
+        return out
+    except:
         return default_output
-
-    out = default_output
-
-    for k in ev['event']:
-        if not (k == 'loaded'):
-            out['Event_' + k] = ev['event'][k]
-
-    return out

@@ -181,164 +181,166 @@ def PMTPulseFinder2(ev,
         pulse_iend=np.int32([-1]),
         pulse_ipeak=np.int32([-1])
     )
+    try:
+        if not (ev['PMTtraces']['loaded'] and
+                (ev['PMTtraces']['t0_frac'].shape[0] > 0)):
+            return default_output
 
-    if not (ev['PMTtraces']['loaded'] and
-            (ev['PMTtraces']['t0_frac'].shape[0] > 0)):
-        return default_output
+        out = default_output
 
-    out = default_output
+        # ADC to voltage with lost points removed
+        ls = ev['PMTtraces']['lost_samples'][:, 0]  # two channels are identical
+        lost_samples_min = np.min(ls[ls > 0])
 
-    # ADC to voltage with lost points removed
-    ls = ev['PMTtraces']['lost_samples'][:, 0]  # two channels are identical
-    lost_samples_min = np.min(ls[ls > 0])
+        pmtV = scale2(ev['PMTtraces']['v_offset'],
+                      ev['PMTtraces']['v_scale'],
+                      ev['PMTtraces']['traces'],
+                      lost_samples_min, amp_gains)
 
-    pmtV = scale2(ev['PMTtraces']['v_offset'],
-                  ev['PMTtraces']['v_scale'],
-                  ev['PMTtraces']['traces'],
-                  lost_samples_min, amp_gains)
+        if base_samples > lost_samples_min:
+            base_samples = np.intp(lost_samples_min * .5)
 
-    if base_samples > lost_samples_min:
-        base_samples = np.intp(lost_samples_min * .5)
+        baseline = np.mean(pmtV[:, :, :base_samples], axis=2)
+        baserms = np.sqrt(np.var(pmtV[:, :, :base_samples], axis=2))
 
-    baseline = np.mean(pmtV[:, :, :base_samples], axis=2)
-    baserms = np.sqrt(np.var(pmtV[:, :, :base_samples], axis=2))
+    #    out['PMT_t0_sec'] = ev['PMTtraces']['t0_sec'][:, 0]
+    #    out['PMT_t0_frac'] = ev['PMTtraces']['t0_frac'][:, 0]
 
-#    out['PMT_t0_sec'] = ev['PMTtraces']['t0_sec'][:, 0]
-#    out['PMT_t0_frac'] = ev['PMTtraces']['t0_frac'][:, 0]
+        pmtV = pmtV - baseline[:, :, None]  # expand as column vectors
 
-    pmtV = pmtV - baseline[:, :, None]  # expand as column vectors
+        # points and traces over threshold
+        overThreshV = pmtV < -threshold * baserms[:, :, None]
+        overThreshTrace = np.any(overThreshV, axis=2)
+        # if no samples in a trace is over threshold, set its first sample
+        # over threshold for ease of processing
+        firstADC = overThreshV[:, :, 0]
+        firstADC[~overThreshTrace] = True
+        overThreshV[:, :, 0] = firstADC
+        # convert to integer for further manipulations
+        overThreshV = overThreshV.astype(int)
+        # pdb.set_trace()
+        # start and end indices of the peaks
+        iPeakStart = np.nonzero(
+            np.concatenate(
+                (overThreshV[:, :, 0][:, :, None], np.diff(overThreshV, n=1, axis=2)), axis=2) == 1)
+        iPeakEnd = np.nonzero(
+            np.concatenate(
+                (np.diff(overThreshV, n=1, axis=2), -overThreshV[:, :, -1][:, :, None]), axis=2) == -1)
+        # pdb.set_trace()
+        # extend the peaks to the points where the baseline are crossed
+        # first left shift to the left boundaries
+        dt = 1
+        crossBase = np.zeros(iPeakStart[0].shape, dtype=bool)  # all false
+        while not all(crossBase):
+            # left shift the column values
+            iPeakStart[2][~crossBase] -= dt
+            # stop if crosses the baseline or index becomes less than 0
+            iPeakStart[2][iPeakStart[2] < 0] = 0
+            crossBase[np.logical_or(iPeakStart[2] == 0, pmtV[
+                                    iPeakStart] > 0)] = True
 
-    # points and traces over threshold
-    overThreshV = pmtV < -threshold * baserms[:, :, None]
-    overThreshTrace = np.any(overThreshV, axis=2)
-    # if no samples in a trace is over threshold, set its first sample
-    # over threshold for ease of processing
-    firstADC = overThreshV[:, :, 0]
-    firstADC[~overThreshTrace] = True
-    overThreshV[:, :, 0] = firstADC
-    # convert to integer for further manipulations
-    overThreshV = overThreshV.astype(int)
-    # pdb.set_trace()
-    # start and end indices of the peaks
-    iPeakStart = np.nonzero(
-        np.concatenate(
-            (overThreshV[:, :, 0][:, :, None], np.diff(overThreshV, n=1, axis=2)), axis=2) == 1)
-    iPeakEnd = np.nonzero(
-        np.concatenate(
-            (np.diff(overThreshV, n=1, axis=2), -overThreshV[:, :, -1][:, :, None]), axis=2) == -1)
-    # pdb.set_trace()
-    # extend the peaks to the points where the baseline are crossed
-    # first left shift to the left boundaries
-    dt = 1
-    crossBase = np.zeros(iPeakStart[0].shape, dtype=bool)  # all false
-    while not all(crossBase):
-        # left shift the column values
-        iPeakStart[2][~crossBase] -= dt
-        # stop if crosses the baseline or index becomes less than 0
-        iPeakStart[2][iPeakStart[2] < 0] = 0
-        crossBase[np.logical_or(iPeakStart[2] == 0, pmtV[
-                                iPeakStart] > 0)] = True
+        # right shift
+        crossBase = np.zeros(iPeakEnd[0].shape, dtype=bool)  # all false
+        while not all(crossBase):
+            # left shift the column values
+            iPeakEnd[2][~crossBase] += dt
+            # stop if crosses the baseline or index becomes less than 0
+            iPeakEnd[2][iPeakEnd[2] > (pmtV.shape[2] - 1)] = pmtV.shape[2] - 1
+            crossBase[np.logical_or(iPeakEnd[2] == pmtV.shape[2] - 1,
+                                    pmtV[iPeakEnd] > 0)] = True
 
-    # right shift
-    crossBase = np.zeros(iPeakEnd[0].shape, dtype=bool)  # all false
-    while not all(crossBase):
-        # left shift the column values
-        iPeakEnd[2][~crossBase] += dt
-        # stop if crosses the baseline or index becomes less than 0
-        iPeakEnd[2][iPeakEnd[2] > (pmtV.shape[2] - 1)] = pmtV.shape[2] - 1
-        crossBase[np.logical_or(iPeakEnd[2] == pmtV.shape[2] - 1,
-                                pmtV[iPeakEnd] > 0)] = True
+        # merge overlap peaks
+        nonOverlapStart = np.ones(iPeakStart[0].shape, dtype=bool)
+        nonOverlapStart[1:] = ~np.logical_and(
+            np.logical_and(np.diff(iPeakStart[0]) == 0, np.diff(iPeakStart[1]) == 0),
+            np.diff(iPeakStart[2]) == 0)
 
-    # merge overlap peaks
-    nonOverlapStart = np.ones(iPeakStart[0].shape, dtype=bool)
-    nonOverlapStart[1:] = ~np.logical_and(
-        np.logical_and(np.diff(iPeakStart[0]) == 0, np.diff(iPeakStart[1]) == 0),
-        np.diff(iPeakStart[2]) == 0)
+        nonOverlapEnd = np.ones(iPeakEnd[0].shape, dtype=bool)
+        nonOverlapEnd[1:] = ~np.logical_and(
+            np.logical_and(np.diff(iPeakEnd[0]) == 0, np.diff(iPeakEnd[1]) == 0),
+            np.diff(iPeakEnd[2]) == 0)
 
-    nonOverlapEnd = np.ones(iPeakEnd[0].shape, dtype=bool)
-    nonOverlapEnd[1:] = ~np.logical_and(
-        np.logical_and(np.diff(iPeakEnd[0]) == 0, np.diff(iPeakEnd[1]) == 0),
-        np.diff(iPeakEnd[2]) == 0)
+        if any(np.logical_xor(nonOverlapStart, nonOverlapEnd)):
+            raise ValueError("Numbers of peak starts and ends don't match")
 
-    if any(np.logical_xor(nonOverlapStart, nonOverlapEnd)):
-        raise ValueError("Numbers of peak starts and ends don't match")
+        # Output will include all pulses and the traces not over the threshold
+        nLines = iPeakStart[0][nonOverlapStart].size
+        out['ch'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['iTrace'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['nPulse'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['iPulse'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['nSatADC'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['baseline'] = np.zeros((nLines,), dtype=np.float64) - 1
+        out['baserms'] = np.zeros((nLines,), dtype=np.float64) - 1
+        out['pulse_area'] = np.zeros((nLines,), dtype=np.float64) - 1
+        out['pulse_height'] = np.zeros((nLines,), dtype=np.float64) - 1
+        out['pulse_istart'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['pulse_iend'] = np.zeros((nLines,), dtype=np.int32) - 1
+        out['pulse_ipeak'] = np.zeros((nLines,), dtype=np.int32) - 1
+        # pdb.set_trace()
+        iTrace0 = 0
+        ch0 = 0
+        nPulse = 0
+        iPulse = 0
+        for iLine in range(nLines):
+            iTrace = iPeakStart[0][nonOverlapStart][iLine]
+            ch = iPeakStart[1][nonOverlapStart][iLine]
 
-    # Output will include all pulses and the traces not over the threshold
-    nLines = iPeakStart[0][nonOverlapStart].size
-    out['ch'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['iTrace'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['nPulse'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['iPulse'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['nSatADC'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['baseline'] = np.zeros((nLines,), dtype=np.float64) - 1
-    out['baserms'] = np.zeros((nLines,), dtype=np.float64) - 1
-    out['pulse_area'] = np.zeros((nLines,), dtype=np.float64) - 1
-    out['pulse_height'] = np.zeros((nLines,), dtype=np.float64) - 1
-    out['pulse_istart'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['pulse_iend'] = np.zeros((nLines,), dtype=np.int32) - 1
-    out['pulse_ipeak'] = np.zeros((nLines,), dtype=np.int32) - 1
-    # pdb.set_trace()
-    iTrace0 = 0
-    ch0 = 0
-    nPulse = 0
-    iPulse = 0
-    for iLine in range(nLines):
-        iTrace = iPeakStart[0][nonOverlapStart][iLine]
-        ch = iPeakStart[1][nonOverlapStart][iLine]
+            out['ch'][iLine] = ch
+            out['iTrace'][iLine] = iTrace
+            out['baseline'][iLine] = baseline[iTrace, ch]
+            out['baserms'][iLine] = baserms[iTrace, ch]
 
-        out['ch'][iLine] = ch
-        out['iTrace'][iLine] = iTrace
-        out['baseline'][iLine] = baseline[iTrace, ch]
-        out['baserms'][iLine] = baserms[iTrace, ch]
+            if overThreshTrace[iTrace, ch]:  # has pulses
+                if (iTrace == iTrace0) and (ch == ch0):  # same trace
+                    nPulse += 1
+                    iPulse += 1
+                else:
+                    iTrace0 = iTrace
+                    ch0 = ch
+                    nPulse = 1
+                    iPulse = 1
 
-        if overThreshTrace[iTrace, ch]:  # has pulses
-            if (iTrace == iTrace0) and (ch == ch0):  # same trace
-                nPulse += 1
-                iPulse += 1
+                iStart = iPeakStart[2][nonOverlapStart][iLine]
+                iEnd = iPeakEnd[2][nonOverlapEnd][iLine]
+
+                # start crossing point
+                x0 = np.interp(0, pmtV[iTrace, ch, iStart:(
+                    iStart + 2)], np.arange(iStart, iStart + 2))
+                # end crossing point
+                x1 = np.interp(0, pmtV[iTrace, ch, (iEnd - 1):(iEnd + 1)], np.arange(iEnd - 1, iEnd + 1))
+                # pdb.set_trace()
+                area = np.trapz(
+                    np.hstack((0, pmtV[iTrace, ch, (iStart + 1):iEnd], 0)),
+                    np.hstack((x0, np.arange(iStart + 1, iEnd), x1)))
+                iPeak = iStart + np.ma.argmin(pmtV[iTrace, ch, iStart:iEnd])
+                height = pmtV[iTrace, ch, iPeak]
+                # pdb.set_trace()
+                # Saturated ADC's
+                nSatADC = np.sum(np.logical_or(ev['PMTtraces']['traces'][iTrace, ch, iStart:iEnd] < -127,
+                                               (ev['PMTtraces']['traces'][iTrace, ch, iStart:iEnd] > 126)))
+
+                out['nPulse'][(iLine - nPulse+1):(iLine+1)] = nPulse
+                out['iPulse'][iLine] = iPulse
+                out['nSatADC'][iLine] = nSatADC
+                out['pulse_area'][iLine] = area
+                out['pulse_height'][iLine] = height
+                out['pulse_ipeak'][iLine] = iPeak
+                out['pulse_istart'][iLine] = iStart
+                out['pulse_iend'][iLine] = iEnd
             else:
-                iTrace0 = iTrace
-                ch0 = ch
-                nPulse = 1
-                iPulse = 1
+                out['nPulse'][iLine] = 0
+                out['iPulse'][iLine] = 0
+                out['nSatADC'][iLine] = 0
+                out['pulse_area'][iLine] = 0
+                out['pulse_height'][iLine] = 0
+                out['pulse_istart'][iLine] = 0
+                out['pulse_iend'][iLine] = 0
+                out['pulse_ipeak'][iLine] = 0
 
-            iStart = iPeakStart[2][nonOverlapStart][iLine]
-            iEnd = iPeakEnd[2][nonOverlapEnd][iLine]
-
-            # start crossing point
-            x0 = np.interp(0, pmtV[iTrace, ch, iStart:(
-                iStart + 2)], np.arange(iStart, iStart + 2))
-            # end crossing point
-            x1 = np.interp(0, pmtV[iTrace, ch, (iEnd - 1):(iEnd + 1)], np.arange(iEnd - 1, iEnd + 1))
-            # pdb.set_trace()
-            area = np.trapz(
-                np.hstack((0, pmtV[iTrace, ch, (iStart + 1):iEnd], 0)),
-                np.hstack((x0, np.arange(iStart + 1, iEnd), x1)))
-            iPeak = iStart + np.ma.argmin(pmtV[iTrace, ch, iStart:iEnd])
-            height = pmtV[iTrace, ch, iPeak]
-            # pdb.set_trace()
-            # Saturated ADC's
-            nSatADC = np.sum(np.logical_or(ev['PMTtraces']['traces'][iTrace, ch, iStart:iEnd] < -127,
-                                           (ev['PMTtraces']['traces'][iTrace, ch, iStart:iEnd] > 126)))
-
-            out['nPulse'][(iLine - nPulse+1):(iLine+1)] = nPulse
-            out['iPulse'][iLine] = iPulse
-            out['nSatADC'][iLine] = nSatADC
-            out['pulse_area'][iLine] = area
-            out['pulse_height'][iLine] = height
-            out['pulse_ipeak'][iLine] = iPeak
-            out['pulse_istart'][iLine] = iStart
-            out['pulse_iend'][iLine] = iEnd
-        else:
-            out['nPulse'][iLine] = 0
-            out['iPulse'][iLine] = 0
-            out['nSatADC'][iLine] = 0
-            out['pulse_area'][iLine] = 0
-            out['pulse_height'][iLine] = 0
-            out['pulse_istart'][iLine] = 0
-            out['pulse_iend'][iLine] = 0
-            out['pulse_ipeak'][iLine] = 0
-
-    return out
+        return out
+    except:
+        return default_output
 
 
 def scale2(v_offset, v_scale, traces, lost_min,
