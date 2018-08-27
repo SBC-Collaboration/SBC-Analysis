@@ -27,7 +27,7 @@ $ git remote add origin https://YOUR_GIT_USERNAME@github.com/cericdahl/SBCcode.g
 * Start by pulling changes made by other users.
 
 ```
-$ git pull
+$ git pull origin master
 ```
 
 * Make your own changes and stage them for comitting. If changing multiple files, it's generally a good idea to stage groups of files relating to the same change together.
