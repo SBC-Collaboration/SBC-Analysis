@@ -23,7 +23,9 @@ if __name__ == "__main__":
     assert example_function("dark matter", 2, sep=" woah ") == "dark matter woah dark matter"
 
 """
-Table of Contents:
+
+                                            Table of Contents:
+
 ------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------
 real_number_q(n): Returns true if n is a number (numpy int, float, uint, or python int or float)
@@ -39,7 +41,9 @@ get_runs(dir, search_for="folders", do_sort=True, reverse=False): Compiles a lis
 trim_run_list(arr, start=None, stop=None): Trims a runlist like one that was returned from get_runs or sort_runs.
                                            start/stop should be a runid like "20170623_0" or None.
 ------------------------------------------------------------------------------------------------------------------------
-
+def BuildEventList(rundir, first_event=0, last_event=-1): Returns sorted list of runs from rundir. Normally this is 
+                                                          used when rundir contains raw data
+------------------------------------------------------------------------------------------------------------------------
 
 """
 
@@ -210,3 +214,22 @@ def trim_runlist(arr, start=None, stop=None):
             continue
         out.append(run)
     return out
+
+
+def BuildEventList(rundir, first_event=0, last_event=-1):
+    # Inputs:
+    #   rundir: Directory for the run
+    #   first_event: Index of first event
+    #   last_event: Index of last_event
+    # Outputs: A sorted list of events from rundir
+    eventdirlist = os.listdir(rundir)
+    eventdirlist = filter(lambda fn: (not re.search('^\d+$', fn) is None) and
+                                     os.path.isdir(os.path.join(rundir, fn)),
+                          eventdirlist)
+    eventdirlist = filter(lambda fn: os.path.exists(os.path.join(rundir,
+                                                                 *[fn, 'Event.txt'])), eventdirlist)
+    eventlist = np.intp(list(eventdirlist))
+    eventlist = eventlist[eventlist >= first_event]
+    if last_event >= 0:
+        eventlist = eventlist[eventlist <= last_event]
+    return np.sort(eventlist)
