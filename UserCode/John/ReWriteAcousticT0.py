@@ -204,7 +204,7 @@ def calculate_t0(piezo_waveform, piezo_timebase, led_on, tau,
             plt.plot(rescaled_t, log_sp_sums, color="b", zorder=1)
             plt.axhline(baseline, color="r", zorder=2)
             plt.axhline(baseline+5*baseline_rms, color="r", zorder=2)
-            plt.fill_between(rescaled_t, baseline, baseline+5*baseline_rms, facecolor="red", alpha=0.3, zorder=10)
+            plt.fill_between(rescaled_t, -18, baseline+5*baseline_rms, facecolor="red", alpha=0.3, zorder=10)
             plt.axvline(t0, color="m", linewidth=4, zorder=3)
             #plt.axvline(test_t0, color="r")
             #plt.axvline(t_first_off, color="k")

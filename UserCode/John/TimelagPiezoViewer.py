@@ -3,6 +3,7 @@ import numpy as np
 from SBCcode.DataHandling.GetSBCEvent import GetEvent as GE
 import os
 import scipy.signal as sig
+from scipy import stats
 # import matplotlib
 # from matplotlib.widgets import TextBox
 
@@ -29,17 +30,17 @@ cali_run = (event_data['Event_run_type'] == 10252) | (event_data['Event_run_type
 # at -3 for transducer 4, which was broken
 pressures = history_data['EventPressure'][0:,3]
 pressures5 = history_data['EventPressure'][0:,5]
-less_than_50 = (pressures<50)
+less_than_50 = (pressures5<50)
 
 # Combining Californium run boolean and pressure boolean arrays. Comment out first line and
 # uncomment second line to use all events, not cutting for run type or pressure. May also use this cut to show specific
 # events.
 
-interesting_events = cali_run*less_than_50
+interesting_events = cali_run*(pressures5<30)
 # interesting_events=(event_data['runid'][:,0]==20171006) * (event_data['runid'][:,1]==3) * (event_data['ev']==38) #+\
 # interesting_events = (event_data['runid'][:,0]==20171007) * (event_data['runid'][:,1]==6) * (event_data['ev']==3)
 # interesting_events = np.ones(event_data['runid'].shape[0],dtype=bool)
-#interesting_events = (pressures<30)
+#interesting_events = (pressures<-4)
 
 
 
@@ -468,20 +469,41 @@ if __name__ == '__main__':
     axes[0,1].set_title('Click on point to plot Piezo 2 trace \n press N for next point or P for previous')
     old_f = plt.gcf()
     plt.ioff()
-    plt.figure()
-    plt.plot(xs2, 1e6*ys2, "bo", picker=5)
-    #x1, y1 = (-2.84015, -9.9795e1)
-    #x2, y2 = (0.0237464, -3.85555e1)
-    x1, y1= (-2.56452, -170.646)
-    x2, y2 = (-0.247984, -195.688)
-    slope = (y2-y1)/(x2-x1)/1e6
-    print(slope)
-    soundspeed = 1/(slope*100)
-    print(soundspeed)
-    xar = np.array([x1, x2])
-    yar = np.array([y1, y2])
-    plt.plot(xar, yar, color="darkorange", linewidth=4)
+    mask1 = (ys2 > -.000150) & (ys2 < 0.0002)
+    plt.plot(xs2[mask1], 1e6 * ys2[mask1], "bo", picker=5)
+    slope, intercept, r_value, p_value, std_err = stats.linregress(xs2[mask1], 1e6*ys2[mask1])
+    print("y = {m:.5f}x - {b:.2f}".format(m=slope, b=-intercept))
+    print("Std_err = {err}".format(err=std_err))
+    print("Speed of sound = {c} m/s".format(c=(1.e4)/slope))
+    line_fit = slope*np.unique(xs2[mask1])+intercept
+    ## Find std_err that contains x% of data points
+    r = 0.98
+    cur_stderr = 0
+    inside = 0
+    print("Finding bound containing {}% of the data points".format(100*r))
+    while inside/len(xs2[mask1]) < r:
+        cur_stderr += 1
+        inside = 0
+        outside = 0
+        for subx, suby in zip(xs2[mask1], ys2[mask1]):
+            if (slope*subx+intercept-cur_stderr*std_err < 1e6*suby < slope*subx+intercept+cur_stderr*std_err):
+                inside += 1
+            else:
+                outside += 1
+        print("{cur} contains {r}% of the data points.".format(cur=cur_stderr, r=100*inside/len(xs2[mask1])))
 
+    print("Done, {cur} succeeds our threshold of {r}% by containing {rtot}% of data points."\
+          .format(cur=cur_stderr*std_err,
+          r=100*r,
+          rtot=100*inside/len(xs2[mask1])))
+    print("Total data points:", len(xs2[mask1]))
+    print("y = {m:.5f}x - {b:.2f}".format(m=slope, b=-intercept))
+    print("std_err = {err}".format(err=std_err))
+    print("Speed of sound = {c} m/s".format(c=(1.e4) / slope))
+    plt.plot(np.unique(xs2[mask1]), line_fit, color="darkorange", linewidth=3)
+    plt.plot(np.unique(xs2[mask1]), line_fit-cur_stderr*std_err, color="darkorange", linewidth=3, linestyle="--")
+    plt.plot(np.unique(xs2[mask1]), line_fit+cur_stderr*std_err, color="darkorange", linewidth=3, linestyle="--")
+    #plt.axhline(0, color="k")
     plt.ylim(-.0005e6,.0002e6)
     plt.xlabel("Z-position (cm)")
     plt.ylabel("t0 lag between PMT and acoustic analysis (us)")
@@ -490,7 +512,6 @@ if __name__ == '__main__':
     # plt.figure(old_f.number)
     line, = axes[0,0].plot(xs1, ys1, 'bo', picker=5)  # 5 points tolerance
     line2, = axes[0,1].plot(xs2, ys2, 'bo', picker=5)
-
 
     # axbox = plt.axes([0.1, 0.05, 0.8, 0.075])nnn
     # text_box = TextBox(axbox, 'Evaluate', initial='')

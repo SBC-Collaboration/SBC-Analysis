@@ -28,3 +28,6 @@ for ev in range(len(events)):
     t0 = acoustic_data["bubble_t0"][events[ev]][1]
     if not np.isnan(t0):
         plt.axvline(t0, color="m", linewidth=3, zorder=3)
+    #ax[ev].set_xlim(t0-0.)
+
+plt.show()
