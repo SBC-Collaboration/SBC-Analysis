@@ -9,7 +9,7 @@ full_loadlist = ['fastDAQ', 'slowDAQ', 'PMTtraces', 'event',
                  'camdata', 'images', 'DAQsetings']
 
 
-def GetEvent(rundirectory, ev, *loadlist):
+def GetEvent(rundirectory, ev, *loadlist, max_file_size=None):
     event = dict()
     event_dir = os.path.join(rundirectory, str(ev))
     for key in full_loadlist:
@@ -34,7 +34,7 @@ def GetEvent(rundirectory, ev, *loadlist):
                 break
 
             try:
-                d_bin = rb(binfile)
+                d_bin = rb(binfile, max_file_size=max_file_size)
                 d_cal = rt(calfile)
                 d = dict()
                 for key in d_bin:
@@ -79,7 +79,7 @@ def GetEvent(rundirectory, ev, *loadlist):
 
     if ('PMTtraces' in loadlist) or (neglist and '~PMTtraces' not in loadlist):
         try:
-            d = rb(os.path.join(event_dir, 'PMTtraces.bin'))
+            d = rb(os.path.join(event_dir, 'PMTtraces.bin'), max_file_size=max_file_size)
             event['PMTtraces'] = d
             event['PMTtraces']['loaded'] = True
         except:
