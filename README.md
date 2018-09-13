@@ -15,12 +15,12 @@ $ git clone https://github.com/cericdahl/SBCcode.git
 ```
 
 ## Setting remote origin
-Before pushing to the master branch, you must first make sure you are a collaborator by asking the owner. Once you're a collaborator, run the following to make the master branch the default, replacing YOUR\_GIT\_USERNAME with your github.com username.
+Before pushing to the master branch, you must first make sure you are a collaborator by asking the owner. Once you're a collaborator, run the following to make the master branch the default, replacing YOUR\_GITHUB\_USERNAME with your github.com username.
 
 ```
 $ cd SBCcode/
 $ git remote rm origin
-$ git remote add origin https://YOUR_GIT_USERNAME@github.com/cericdahl/SBCcode.git
+$ git remote add origin https://YOUR_GITHUB_USERNAME@github.com/cericdahl/SBCcode.git
 ```
 
 ## Daily Workflow
