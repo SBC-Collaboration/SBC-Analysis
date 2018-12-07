@@ -86,6 +86,21 @@ if __name__ == "__main__":
     bias596vledON  = os.path.join(raw_directory, "20180910_1")
     bias587vledON  = os.path.join(raw_directory, "20180912_0")
     shortercables  = os.path.join(raw_directory, "20180914_0")
+    nofan          = os.path.join(raw_directory, "20180918_0")
+    nofan2         = os.path.join(raw_directory, "20180918_1")
+    freddy         = os.path.join(raw_directory, "20180920_0")
+    singlephotonpls= os.path.join(raw_directory, "20180919_0")
+    v135           = os.path.join(raw_directory, "20180921_0")
+    v136           = os.path.join(raw_directory, "20180921_1")
+    v137           = os.path.join(raw_directory, "20180921_2")
+    v138           = os.path.join(raw_directory, "20180921_3")
+    v139           = os.path.join(raw_directory, "20180921_4")
+    v140           = os.path.join(raw_directory, "20180921_5")
+    v141           = os.path.join(raw_directory, "20180921_6")
+    v142           = os.path.join(raw_directory, "20180921_7")
+    v143           = os.path.join(raw_directory, "20180921_8")
+    v144           = os.path.join(raw_directory, "20180921_9")
+    new            = os.path.join(raw_directory, "20181205_3")
     labels = ["58V - LED ON",
               "58V - LED OFF",
               "58.6V - LED ON",
@@ -93,7 +108,22 @@ if __name__ == "__main__":
               "59V - LED ON",
               "59.6V - LED ON",
               "58.7V - LED ON (new)",
-              "Shorter cables test"]
+              "Shorter cables test",
+              "no fan",
+              "no fan 2",
+              "freddy",
+              "single photon maybe pls",
+              "vhigh=1.35v",
+              "vhigh=1.36v",
+              "vhigh=1.37v",
+              "vhigh=1.38v",
+              "vhigh=1.39v",
+              "vhigh=1.40v",
+              "vhigh=1.41v",
+              "vhigh=1.42v",
+              "vhigh=1.43v",
+              "vhigh=1.44v",
+              "new"]
 
     var_array = [bias58vledON,
                  bias58vledOFF,
@@ -102,7 +132,23 @@ if __name__ == "__main__":
                  bias59vledON,
                  bias596vledON,
                  bias587vledON,
-                 shortercables]
+                 shortercables,
+                 nofan,
+                 nofan2,
+                 freddy,
+                 singlephotonpls,
+                 v135,
+                 v136,
+                 v137,
+                 v138,
+                 v139,
+                 v140,
+                 v141,
+                 v142,
+                 v143,
+                 v144,
+                 new
+                 ]
 
     colors = ["darkorange",
               "yellow",
@@ -111,9 +157,39 @@ if __name__ == "__main__":
               "green",
               "black",
               "blue",
+              "red",
+              "green",
+              "darkorange",
+              "magenta",
+              "cyan",
+              "red",
+              "blue",
+              "magenta",
+              "green",
+              "black",
+              "yellow",
+              "orange",
+              "lime",
+              "gray",
+              "chocolate",
               "red"]
 
     active = np.array([0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
+                       0,
                        0,
                        0,
                        0,
@@ -125,7 +201,7 @@ if __name__ == "__main__":
     labels = np.array(labels)[active]
     var_array = np.array(var_array)[active]
     colors = np.array(colors)[active]
-    nbins = 1500
+    nbins = 2500
     #fig, ax = plt.subplots(1, 1)
     #plot_SiPM_trace(ax, SBCcode.get_event(active_event, 0, "PMTtraces")["PMTtraces"])
 
@@ -134,8 +210,8 @@ if __name__ == "__main__":
     max_times = []
     n_runs =  len(var_array)
     plt.ioff()
-    left_lim = 350
-    right_lim = 1850
+    left_lim = 800
+    right_lim = 1400
     for run_ix in range(n_runs):
         sub_areas = []
         sub_max_times = []
@@ -154,7 +230,11 @@ if __name__ == "__main__":
                 avg = np.average(yd_0[:left_lim])
                 #pmt_area = scipy.integrate.trapz(yd_1[good_indices]-avg,
                 #                                 dx=1e9*pmt_data["dt"][trig, 1])
-                pmt_area = np.sum(yd_0-avg)
+                # if np.any(yd_0 > 0.15):
+                #     pmt_area = -1.
+                # else:
+                pmt_area = np.sum(yd_0[left_lim:right_lim]-avg)
+                print(np.sum(yd_0))
                 sub_areas.append(pmt_area)
                 sub_max_times.append(1e9 * pmt_data["dt"][trig, 0] * np.argmax(pmt_data["traces"][trig, 0, :]))
 
@@ -176,5 +256,7 @@ if __name__ == "__main__":
     # plt.hist(max_times, bins=nbins, fill=False, color=colors, histtype="step", stacked=False)
     # plt.legend(labels)
     # plt.suptitle("Time of max")
+    #plt.ion()
+    plt.grid()
     plt.show()
     pass
