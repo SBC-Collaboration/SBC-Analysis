@@ -33,11 +33,12 @@ def ReadBlock(file_name, max_file_size = 500):
 
     # Open file here
     file_size = os.path.getsize(file_name)/1000/1000  # To get result in mb
-    if file_size > max_file_size:
-        # This exception is raised here because it's the responsibility of whoever called the function to handle it
-        # appropriately!
-        raise IOError("File {} is {} MB. Increase current max_file_size: {}".\
-                      format(file_name, file_size, max_file_size))
+    if type(max_file_size) == float:
+        if file_size > max_file_size:
+            # This exception is raised here because it's the responsibility of whoever called the function to handle it
+            # appropriately!
+            raise IOError("File {} is {} MB. Increase current max_file_size: {}".\
+                          format(file_name, file_size, max_file_size))
 
     with open(file_name, "rb") as read_in:
         # Check the Endianness flag of the block
