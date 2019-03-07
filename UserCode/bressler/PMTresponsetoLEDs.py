@@ -10,6 +10,8 @@ runpath = "/bluearc/storage/SBC-17-data/20170718_4/"
 events = [evnt for evnt in listdir(runpath) if not isfile(join(runpath,evnt))]
 
 e = sbc.DataHandling.GetSBCEvent.GetEvent(runpath,0)
+d=sbc.AnalysisModules.PMTfastDAQalignment.PMTandFastDAQalignment(e)
+print(d.keys())
 tr = e["PMTtraces"]
 trac = tr["traces"]
 t0 = tr["t0"]
