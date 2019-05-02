@@ -22,8 +22,8 @@ def findPeakNimDiff(PMTtrace,NIMtrace,timePMT,timeNIM,plotbool):
     dt_NIM = timeNIM[1]-timeNIM[0]
     pos_derivative = -np.diff(NIMtrace)/dt_NIM
     NIMDerivativePeaks = scipy.signal.find_peaks(pos_derivative,1e10)
-    print(len(NIMDerivativePeaks[0]))
-
+    #print(len(NIMDerivativePeaks[0]))
+    
     if len(NIMDerivativePeaks[0])>0:
         NIMPulseTime = NIMDerivativePeaks[0][0]*dt_NIM
     else: 
@@ -39,7 +39,7 @@ def findPeakNimDiff(PMTtrace,NIMtrace,timePMT,timeNIM,plotbool):
     
     if Npeaks == 1 and NIMPulseTime:
         if pk_times:
-            return NIMPulseTime-pk_times[0]
+            return pk_times[0]-NIMPulseTime
     
     #return [NIMPulseTime-pk_times[i] for i in range(len(pk_times))]
     
@@ -62,3 +62,4 @@ def main():
     
 if __name__ == "__main__":
     main()
+    
