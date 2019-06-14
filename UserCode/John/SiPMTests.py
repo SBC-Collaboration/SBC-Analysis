@@ -101,6 +101,7 @@ if __name__ == "__main__":
     v143           = os.path.join(raw_directory, "20180921_8")
     v144           = os.path.join(raw_directory, "20180921_9")
     new            = os.path.join(raw_directory, "20181205_3")
+    test1          = os.path.join(raw_directory, "TEST")
     labels = ["58V - LED ON",
               "58V - LED OFF",
               "58.6V - LED ON",
@@ -123,7 +124,8 @@ if __name__ == "__main__":
               "vhigh=1.42v",
               "vhigh=1.43v",
               "vhigh=1.44v",
-              "new"]
+              "new",
+              "test1"]
 
     var_array = [bias58vledON,
                  bias58vledOFF,
@@ -147,8 +149,8 @@ if __name__ == "__main__":
                  v142,
                  v143,
                  v144,
-                 new
-                 ]
+                 new,
+                 test1]
 
     colors = ["darkorange",
               "yellow",
@@ -172,9 +174,11 @@ if __name__ == "__main__":
               "lime",
               "gray",
               "chocolate",
+              "red",
               "red"]
 
     active = np.array([0,
+                       0,
                        0,
                        0,
                        0,
