@@ -6,11 +6,9 @@ import numpy as np
 import scipy.integrate
 from scipy.fftpack import fft
 from scipy.signal import butter, lfilter, freqz
-
 #For Gaussian Fitting
 from scipy.optimize import curve_fit
 from numpy import exp, linspace, random
-
 import SBCcode
 from SBCcode.Tools import SBCtools
 
@@ -124,9 +122,6 @@ def GetAreas(filepath, channel_num, filter_order):
     time_arr = []
     y_arr = []
     clean_y_arr = []
-
-    #Is this necessary?
-    #plt.ioff()
 
     #Get events from run file
     events = SBCtools.BuildEventList(filepath)
@@ -249,6 +244,12 @@ def FitGauss(n, bins, nbins):
 
     #Fit the Sum of Gaussians
     popt_sum,pcov_sum = curve_fit(sum_gaussian,sum_bins,sum_n,p0=[150,mean_noise,sigma_noise,1000,mean_SP,sigma_SP])
+
+    # #This is for visualizing the range of data being approximated to the Gaussian Curve (avg_start, left_lim, right_lim)
+    # #Uncomment this to plot these points on the histogram
+    #ax.plot([bins[start_pos], bins[start], bins[peak_i], bins[end]],[n[start_pos],lower_thresh,peak,upper_thresh], 'ro')
+
+
     #Return the Gaussian Params
     return [popt_sum, sum_n, sum_bins, bin_width, start]
 
@@ -281,7 +282,7 @@ def PlotTraces(n,bins,local_min,nbins,bin_width,time_arr, y_arr, clean_y_arr):
     print ("\nPlotting Traces")
     #First, find max of n
     noise_cen = bins[np.argmax(n)]
-    SP_cen = bins[np.argmax(n[local_min:])]
+    SP_cen = bins[np.argmax(n[local_min:])] #this could be the problem
 
     #Find first 10 traces that contribute to noise peak
     #and first 10 traces that contribute to single pixel peak
@@ -289,11 +290,11 @@ def PlotTraces(n,bins,local_min,nbins,bin_width,time_arr, y_arr, clean_y_arr):
     SP_indexes = []
     noise_count = 0
     SP_count = 0
-    for i in range(nbins):
-        if areas[i] > SP_cen and areas[i] < SP_cen + bin_width and SP_count < 10:
+    for i in range(nbins): #loop through areas array
+        if areas[i] > SP_cen and areas[i] < SP_cen + bin_width and SP_count < 10: #find first 10 instances of SP within bin
             SP_indexes.append(i)
             SP_count += 1
-        elif areas[i] > noise_cen and areas[i] < noise_cen + bin_width and noise_count < 10:
+        elif areas[i] > noise_cen and areas[i] < noise_cen + bin_width and noise_count < 10: #find first 10 instances of noise within bin
             noise_indexes.append(i)
             noise_count += 1
         elif noise_count >= 10 and SP_count >= 10:
