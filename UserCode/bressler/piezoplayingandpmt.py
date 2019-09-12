@@ -25,12 +25,21 @@ def PMTandPiezoPlot(datadir,run,event,gain):
     en = event
     mu = gain
     e = sbc.DataHandling.GetSBCEvent.GetEvent(datadir+'/'+run,en)
-    p1=e["fastDAQ"]["Piezo1"]
+    print(e["fastDAQ"].keys())
+    cgate = e["fastDAQ"]["CAMgate"]
+    dcam = np.diff(cgate)
+   
+    p0=e["fastDAQ"]["Piezo1"]
+    p1 = e["fastDAQ"]["Piezo2"]
     fdt = e["fastDAQ"]["time"]
     runreconpath = "/pnfs/coupp/persistent/grid_output/SBC-17/output/%s/"%run
     pmtdiffs = []
     diffs = []
     
+    camOnTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] < -0.5]
+    camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
+    
+ 
     acousticfilename = runreconpath+"AcousticAnalysis_%s.bin"%run
     a = sbc.DataHandling.ReadBinary.ReadBlock(acousticfilename)
     bubt0 = a["bubble_t0"]
@@ -40,27 +49,34 @@ def PMTandPiezoPlot(datadir,run,event,gain):
     pmtalign = d["PMT_trigt0_sec"]+d["PMT_trigt0_frac"]
     tracetimes = pmttracetime - pmtalign
     at0 = bubt0[en,0]
+    at0_1 = bubt0[en,1]
     i=0
     candidates = []
     candidate_times=[]
-    pmtt0=0
     for t in (tracetimes-at0):
     
         if t<0.2 and t>-0.2:
-    
-            pmtdiffs.append(t)
-            trace = -(e["PMTtraces"]["traces"][i][0])
-            dt = e["PMTtraces"]["dt"][i][0]
-            baseline = np.mean(trace[0:50])
-            trace = trace - baseline
-            tPMT = np.arange(len(trace))*dt
-            [phe,n,totInt,pktimes] = SBC_pulse_integrator_bressler(trace,dt)
+            lastCamOff = 0
+            for k in range(len(camOffTimes)):
+                if t+at0 > camOffTimes[k]:
+                    lastCamOff = camOffTimes[k]
+                elif t+at0 < camOffTimes[k]:
+                    break
+            print(t+at0-lastCamOff)
+            if t+at0-lastCamOff > 25e-6:
             
-            if phe != None:
-                phe /= mu
-                candidates.append(phe)
-                candidate_times.append(t)
-            i+=1
+                pmtdiffs.append(t)
+                trace = -(e["PMTtraces"]["traces"][i][0])
+                dt = e["PMTtraces"]["dt"][i][0]
+                baseline = np.mean(trace[0:50])
+                trace = trace - baseline
+                [phe,n,totInt,pktimes] = SBC_pulse_integrator_bressler(trace,dt)
+                
+                if phe != None:
+                    phe /= mu
+                    candidates.append(phe)
+                    candidate_times.append(t)
+        i+=1
     candidate_phe = 0
     the_index = 0
     i=0
@@ -78,21 +94,26 @@ def PMTandPiezoPlot(datadir,run,event,gain):
             diffs.append(candidate_times[candidates.index(max(candidates))])
     fig,ax1 = plt.subplots()
     ax2 = ax1.twinx()
-    ax1.plot(fdt,p1,'b')
+    ax1.plot(fdt,p0,'b',alpha=0.6)
+    ax1.plot(fdt,p1,'k',alpha=0.2)
     for i in range(len(candidates)):
         if i == the_index:
             ax2.plot([candidate_times[i]+at0,candidate_times[i]+at0],[0,candidates[i]],'r',lw=4)
         else:
             ax2.plot([candidate_times[i]+at0,candidate_times[i]+at0],[0,candidates[i]],'y',lw=4)
     ax2.plot([min(candidate_times),max(candidate_times)],[0,0],linewidth=2)
-    ax2.plot([at0,at0],[0,max(candidates)],'g',linewidth=4)
+    ax2.plot([at0,at0],[0,max(candidates)],'b',linewidth=4)
+    ax2.plot([at0_1,at0_1],[0,max(candidates)],'k',linewidth=4)
+
+    ax1.plot(fdt,cgate,'c')
+    ax1.plot(fdt[:-1],dcam,'m')
     ax2.set_ylabel('pmt signal (phe)',fontsize=20)
     ax1.set_xlabel('time (s)',fontsize=20)
     ax1.set_ylabel('Acoustic signa(V)',fontsize=20)
     ax1.set_ylim([min(p1),max(p1)])
-    ax2.set_xlim([-0.03,-0.015])
+    ax2.set_xlim([-0.1,0])
     plt.show
-    
+    """
     for i in near_trace_indices:
         trace = e["PMTtraces"]["traces"][i][0]
         dt = e["PMTtraces"]["dt"]
@@ -107,9 +128,9 @@ def PMTandPiezoPlot(datadir,run,event,gain):
     plt.figure()
     plt.plot(e["fastDAQ"]["time"],e["fastDAQ"]["VetoCoinc"])
     plt.show
-    """
+    
 def main():
-    PMTandPiezoPlot('/bluearc/storage/SBC-17-data', "20170710_4",42, 4e7)
+    PMTandPiezoPlot('/bluearc/storage/SBC-17-data', "20170707_6",21, 4e7)
     
 if __name__=="__main__":
     main()
