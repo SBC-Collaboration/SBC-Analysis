@@ -12,7 +12,7 @@
 import numpy as np
 # import matplotlib.pyplot as plt
 
-np.set_printoptions(threshold=np.nan)
+# np.set_printoptions(threshold=np.nan)
 
 
 def ReadFile(filename):
