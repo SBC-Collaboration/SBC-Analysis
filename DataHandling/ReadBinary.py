@@ -15,7 +15,7 @@ system_endianness = sys.byteorder
 file_endianness = 'little'
 
 
-def ReadBlock(file_name, max_file_size = 500):
+def ReadBlock(file_name, max_file_size = 2000):
     '''
     This function takes in a binary data file, and reads it in byte-wise,
     then recasts each variable

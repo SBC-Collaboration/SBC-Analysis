@@ -1,0 +1,24 @@
+Raw Directory: 
+/bluearc/storage/SBC-17-data
+Scan Directory: 
+/coupp/data/home/coupp/scan_output_SBC-17
+Reco Directory:
+/pnfs/coupp/persistent/grid_output/SBC-17/output/
+PLC temperature var: 
+T3
+Relative Path to images:
+
+Image naming convention(0 for 'cam0_image0.png', 1 for 'cam0image  0.bmp'):
+1
+Number of Cameras:
+2
+Image Orientation (0 for '0', 1 for '90', 2 for '180', 3 for '270'): 
+0
+first frame: 
+1
+trig frame: 
+10
+Piezo: 
+Piezo7
+Dytran:
+Dytran
