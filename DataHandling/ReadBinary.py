@@ -7,7 +7,7 @@ from collections import OrderedDict
 # import pdb
 # import matplotlib.pyplot as plt
 
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 
 # Get the Endianness of the system and set a default file endianness
 # If the two are equivalent, the bytes will have to be flipped to be read
