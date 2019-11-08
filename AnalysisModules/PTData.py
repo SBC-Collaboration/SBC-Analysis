@@ -14,7 +14,7 @@ import numpy as np
 # import SBCcode as sbc
 
 
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 
 
 def DataTrim(dictionary, instrument):
