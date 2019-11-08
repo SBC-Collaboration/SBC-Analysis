@@ -83,10 +83,6 @@ class Application(tk.Frame):
         self.native_image_height = None
         self.max_zoom = 3
 
-        # add quit button
-        button = tk.Button(self, text = 'Quit', command=ROOT.destroy)
-        button.place(x=0,y=0)
-
         # raw_directory: where the data for an individual dataset is stored
         # base_directory: where the datasets are stored, created from raw_directory
         # scan_directory: where the handscans are stored
@@ -109,7 +105,8 @@ class Application(tk.Frame):
         self.scan_directory = '/coupp/data/home/coupp/scan_output_SBC-17/'
         self.reco_directory = '/pnfs/coupp/persistent/grid_output/SBC-17/output/'
         #self.reco_directory = '/coupp/data/home/coupp/recon/current/30l-16/output/'
-        self.ped_directory = '/nashome/z/zsheng/Event-Viewer'
+        self.ped_directory = '/nashome/z/zsheng/SBCcode/EventViewer'
+        self.npy_directory = '/nashome/z/zsheng/SBCcode/EventViewer'
         self.config_file_directory = os.path.join(self.ped_directory, 'configs')
 
         # #  for running on local machine, change these based on local file location to set the correct data directories and initial dataset
@@ -255,7 +252,7 @@ class Application(tk.Frame):
 
     def reset_event(self):
         self.reco_row = None
-        # first event
+        # Event of 20170719_0 Event 0
         self.row_index = 14177
         self.increment_event(1)
 
@@ -263,7 +260,7 @@ class Application(tk.Frame):
         try:
             # look for npy file in the custome directory
             # has to run convert_raw_to_npy.py first to generate the file
-            self.raw_events = np.load(os.path.join('/nashome/z/zsheng/Event-Viewer','raw_events.npy'))
+            self.raw_events = np.load(os.path.join(self.npy_directory,'raw_events.npy'))
         except FileNotFoundError:
             # this error should be handled when it crops up in the code
             raise FileNotFoundError
@@ -581,6 +578,8 @@ class Application(tk.Frame):
                 self.raw_directory_entry.insert(0, self.raw_directory)
                 self.reco_directory_entry.delete(0, tk.END)
                 self.reco_directory_entry.insert(0, self.reco_directory)
+                self.npy_directory_entry.delete(0, tk.END)
+                self.npy_directory_entry.insert(0, self.npy_directory)
                 self.scan_directory_entry.delete(0, tk.END)
                 self.scan_directory_entry.insert(0, self.scan_directory)
                 if os.path.exists(self.scan_directory):
@@ -635,6 +634,7 @@ class Application(tk.Frame):
             self.raw_directory = self.raw_directory_entry.get()
             self.scan_directory = self.scan_directory_entry.get()
             self.reco_directory = self.reco_directory_entry.get()
+            self.npy_directory = self.npy_directory_entry.get()
             if self.reco_directory_label['state'] != tk.DISABLED:
                 if self.reco_version_combobox.get() == 'devel':
                     self.reco_directory = self.reco_directory.replace('current', 'devel')
@@ -694,6 +694,8 @@ class Application(tk.Frame):
         self.scan_directory_entry.insert(0, self.scan_directory)
         self.reco_directory_entry.delete(0, tk.END)
         self.reco_directory_entry.insert(0, self.reco_directory)
+        self.npy_directory_entry.delete(0, tk.END)
+        self.npy_directory_entry.insert(0, self.npy_directory)        
         if os.path.exists(self.scan_directory):
             self.do_handscan_checkbutton['state'] = tk.NORMAL
         else:
@@ -1260,7 +1262,7 @@ class Application(tk.Frame):
     def load_reco(self):
         self.reco_row = None
         self.reco_events = None
-        path = os.path.join(self.reco_directory, 'reco_eventsNOTYET.npy')
+        path = os.path.join(self.npy_directory, 'reco_eventsNOTYET.npy')
         if not os.path.isfile(path):
             logger.error('cannot find reco_data.npy, reco data will be disabled')
             self.toggle_reco_widgets(state=tk.DISABLED)
@@ -1587,10 +1589,20 @@ class Application(tk.Frame):
         self.reco_version_combobox = ttk.Combobox(self.config_tab_main, values=['current', 'devel'])
         self.reco_version_combobox.grid(row=4, column=1, sticky='WE')
 
+        self.npy_directory_label = tk.Label(self.config_tab_main, text='NPY Directory:')
+        self.npy_directory_label.grid(row=5, column=0, sticky='WE')
+        self.npy_directory_entry = tk.Entry(self.config_tab_main, width=12)
+        self.npy_directory_entry.insert(0, self.npy_directory)
+        self.npy_directory_entry.grid(row=5, column=1, sticky='WE')
+
         self.update_directory_button = tk.Button(self.config_tab_main, text='Update Directories',
                                                  command=self.update_directories)
-        self.update_directory_button.grid(row=5, column=2, sticky='WE')
-
+        self.update_directory_button.grid(row=1, column=2, sticky='WE')
+        
+        # add quit button
+        self.quit_button = tk.Button(self.config_tab_main, text='Quit PED', command=ROOT.destroy)
+        self.quit_button.grid(row=2, column=2, sticky='WE')
+        
         # frame 2
         self.manual_ped_config_directory_label = tk.Label(self.config_tab_vars, text='Manual Path to ped_config.txt')
         self.manual_ped_config_directory_label.grid(row=0, column=0, sticky='WE')
