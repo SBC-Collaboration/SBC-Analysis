@@ -13,7 +13,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 from gaincalc import get_gain
-from pulse_integrator import SBC_pulse_integrator_bressler
+import pulse_integrator as pi
+from runlistscatalogue import *
+import gc
 
 CONVERSION_TO_CHARGE = (125.0/128)*(1/50.0)*(1/1000.0)*(1/(1.602e-19))
 
@@ -21,7 +23,6 @@ def trig_difference(runs):
     pmtdiffs = []
     pmtnobubdiffs = []
     dubbubdiffs = []
-    i=0
     for run in runs:
         print(run)
         runrawpath = "/bluearc/storage/SBC-17-data/%s/"%run
@@ -35,12 +36,12 @@ def trig_difference(runs):
         #events = [evnt for evnt in listdir(runrawpath) if not isfile(join(runrawpath,evnt))]
         #for x in events:
         for x in range(101):
+            gc.collect()
             try:
                 e = sbc.DataHandling.GetSBCEvent.GetEvent(runrawpath,x,'fastDAQ','PMTtraces')
                 cgate = e["fastDAQ"]["CAMgate"]
                 dcam = np.diff(cgate)
                 fdt = e["fastDAQ"]["time"]
-                camOnTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] < -0.5]
                 camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
                 pmttracetime = e["PMTtraces"]["t0_sec"][:,0]+e["PMTtraces"]["t0_frac"][:,0]
                 d=sbc.AnalysisModules.PMTfastDAQalignment.PMTandFastDAQalignment(e)
@@ -76,18 +77,20 @@ def zdependence(runs):
     #m=4e7
 
     m=get_gain("/bluearc/storage/SBC-17-data/",runs[0])
-    Ncoinc = 0
-    ntotcoinc = 0
-    totevents = 0
-    totbub = 0
-    diffs = []
-    goodz=[]
-    pmtdiffs = []
-    coincspec = []
+    
+    Ncoinc = [0,0]
+    ntotcoinc = [0,0]
+    totevents = [0,0]
+    totbub = [0,0]
+    diffs = [[],[]]
+    goodz=[[],[]]
+    pmtdiffs = [[],[]]
+    coincspec = [[],[]]
+
     allxyzfname = "/pnfs/coupp/persistent/grid_output/SBC-17/output/SimpleXYZ_all.bin"
     xyzf = sbc.DataHandling.ReadBinary.ReadBlock(allxyzfname)
     for run in runs:
-        print("processing run "+run)
+        print("zdependence processing run "+run)
         indices = [i for i,x in enumerate(xyzf["runid"]) if str(x[0])+"_"+str(x[1]) == run]
         runposreco = {"ev":[xyzf["ev"][indices]],"x":[xyzf["bubX"][indices]],
                       "y":[xyzf["bubY"][indices]],"z":[xyzf["bubZ"][indices]]}
@@ -98,98 +101,102 @@ def zdependence(runs):
         #c = sbc.DataHandling.ReadBinary.ReadBlock(getbubfile)
         bubt0 = a["bubble_t0"]
         events = [evnt for evnt in listdir(runrawpath) if not isfile(join(runrawpath,evnt))]
-        with open("/nashome/b/bressler/output/%s_PMTmatching_ch1.txt"%run,"w+") as f:
-            f.write("run event PMT_t0_index PMT_t0_-at0_us PMT_t0 at0 phe z\n")
-            for x in events:
-                
-                totevents += 1
-                if not np.isnan(runposreco["z"][0][int(x)]):
-                    totbub += 1
-                    e = sbc.DataHandling.GetSBCEvent.GetEvent(runrawpath,x)
-                    veto = e["fastDAQ"]["VetoCoinc"]
-                    cgate = e["fastDAQ"]["CAMgate"]
-                    dcam = np.diff(cgate)
-                    fdt = e["fastDAQ"]["time"]
-                    camOnTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] < -0.5]
-                    camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
-
+        for j in [0,1]:
+            with open("/nashome/b/bressler/sbcoutput/%s_PMTmatching_ch%s.txt"%(run,str(j)),"w+") as f:
+                f.write("run event PMT_t0_index PMT_t0_-at0_us PMT_t0 at0 phe z\n")
+                for x in events:
                     
-                    if min(veto)<-0.3:
-                        print("Veto Coincidence")
-                    pmttracetime = e["PMTtraces"]["t0_sec"][:,0]+e["PMTtraces"]["t0_frac"][:,0]
-                    d=sbc.AnalysisModules.PMTfastDAQalignment.PMTandFastDAQalignment(e)
-                    pmtalign = d["PMT_trigt0_sec"]+d["PMT_trigt0_frac"]
-                    tracetimes = pmttracetime - pmtalign
-                    at0 = bubt0[int(x),1]
-                    i=1 # to match the indexing of the pre-made code 
-                    candidate = 0
-                    candidate_time = 0
-                    candidate_PMTtime = 0
-                    candidate_index = 0
-                    for t in (tracetimes-at0):
-                        # loop through every PMT trace for the event
+                    totevents[j] += 1
+                    if not np.isnan(runposreco["z"][0][int(x)]):
+                        totbub[j] += 1
+                        e = sbc.DataHandling.GetSBCEvent.GetEvent(runrawpath,x)
+                        veto = e["fastDAQ"]["VetoCoinc"]
+                        cgate = e["fastDAQ"]["CAMgate"]
+                        dcam = np.diff(cgate)
+                        fdt = e["fastDAQ"]["time"]
+                        camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
+    
                         
-                        if t<0 and t>-500e-6: 
+                        if min(veto)<-0.3:
+                            print("Veto Coincidence")
+                        pmttracetime = e["PMTtraces"]["t0_sec"][:,0]+e["PMTtraces"]["t0_frac"][:,0]
+                        d=sbc.AnalysisModules.PMTfastDAQalignment.PMTandFastDAQalignment(e)
+                        pmtalign = d["PMT_trigt0_sec"]+d["PMT_trigt0_frac"]
+                        tracetimes = pmttracetime - pmtalign
+                        at0 = bubt0[int(x),j]
+                        i=1 # to match the indexing of the pre-made code 
+                        candidate = 0
+                        candidate_time = 0
+                        candidate_PMTtime = 0
+                        candidate_index = 0
+                        for t in (tracetimes-at0):
+                            # loop through every PMT trace for the event
                             
-                            lastCamOff = 0
-                            for k in range(len(camOffTimes)):
-                                if t+at0 > camOffTimes[k]:
-                                    lastCamOff = camOffTimes[k]
-                                elif t+at0 < camOffTimes[k]:
-                                    break
-                            if t+at0-lastCamOff > 25e-6:
-                                # if the trace time is within 500 microseconds before acoustic t0:
-                                ntotcoinc+=1
-                                pmtdiffs.append(t)
+                            if t<0 and t>-500e-6: 
                                 
-                                #take abs to get positive area:
-                                trace = np.fabs(e["PMTtraces"]["traces"][i][0]) 
-                                
-                                dt = e["PMTtraces"]["dt"][i][0]
-                                
-                                #subtract baseline:
-                                baseline = np.mean(trace[0:50])
-                                trace -= baseline 
-                                                            
-                                #integrate and convert to phe:
-                                [phe,n,totInt,pktimes] = SBC_pulse_integrator_bressler(trace,dt) 
-                                if phe != None:
-                                    phe /= m
-                                    #keep track of largest candidate:
-                                    if phe > candidate:
-                                        candidate = phe
-                                        candidate_time = t
-                                        candidate_PMTtime = t+at0
-                                        candidate_index = i
-                        i+=1
-                    #i.e. if there is a candidate PMT trace with area greater than zero
-                    if candidate > 0:
-                        Ncoinc += 1
-                        ind = candidate_index
-                        pmtt = candidate_PMTtime
-                        diffs.append(candidate_time)
-                        goodz.append(runposreco["z"][0][int(x)])
-                        coincspec.append(candidate)
-                        f.write("%s %s %d %f %f %f %f %f\n"%(run,x,ind,
-                                                          candidate_time*1e6,
-                                                          pmtt,at0,candidate,
-                                                          runposreco["z"][0][int(x)]))
-            print("run "+run+" file written")
+                                lastCamOff = 0
+                                for k in range(len(camOffTimes)):
+                                    if t+at0 > camOffTimes[k]:
+                                        lastCamOff = camOffTimes[k]
+                                    elif t+at0 < camOffTimes[k]:
+                                        break
+                                if t+at0-lastCamOff > 25e-6:
+                                    # if the trace time is within 500 microseconds before acoustic t0:
+                                    ntotcoinc[j]+=1
+                                    pmtdiffs.append(t)
+                                    
+                                    #take abs to get positive area:
+                                    trace = np.fabs(e["PMTtraces"]["traces"][i][0]) 
+                                    #if ch0 saturated, stitch in low res channel:
+                                    if max(trace) == 128:
+                                        trace = pi.stitchTraces(trace,np.fabs(e["PMTtraces"]["traces"][i][1]))
+                                    dt = e["PMTtraces"]["dt"][i][0]
+                                    
+                                    #subtract baseline:
+                                    #Actually this gets done in pulse_integrator anyway
+                                    #baseline = np.mean(trace[0:50])
+                                    #trace -= baseline 
+                                                                
+                                    #integrate and convert to phe:
+                                    [phe,n,totInt,pktimes] = pi.SBC_pulse_integrator_bressler(trace,dt) 
+                                    if phe != None:
+                                        phe /= m
+                                        #keep track of largest candidate:
+                                        if phe > candidate:
+                                            candidate = phe
+                                            candidate_time = t
+                                            candidate_PMTtime = t+at0
+                                            candidate_index = i
+                            i+=1
+                        #i.e. if there is a candidate PMT trace with area greater than zero
+                        if candidate > 0:
+                            Ncoinc[j] += 1
+                            ind = candidate_index
+                            pmtt = candidate_PMTtime
+                            diffs[j].append(candidate_time)
+                            goodz[j].append(runposreco["z"][0][int(x)])
+                            coincspec[j].append(candidate)
+                            f.write("%s %s %d %f %f %f %f %f\n"%(run,x,ind,
+                                                              candidate_time*1e6,
+                                                              pmtt,at0,candidate,
+                                                              runposreco["z"][0][int(x)]))
+                    gc.collect()
+            print("run "+run+" file %s written"%str(j))
                         #pmtdiffs.append(candidate_times[candidates.index(max(candidates))])
     print("total number of events: "+str(totevents))
     print("total number of bubbles: "+str(totbub))               
     print("total coincident triggers: "+str(ntotcoinc))
     print("total coincident bubbles with scintillation greater than 0phe: "+str(Ncoinc))
-    print("fraction of bubbles with a coincident scintillation signal greater than 0phe: "+str(Ncoinc*100/totbub)+"%")
+    print("fraction of bubbles with a coincident scintillation signal greater than 0phe: "+str(sum(Ncoinc)*100/sum(totbub))+"%")
     
     return [goodz,diffs,coincspec,Ncoinc,ntotcoinc,totevents,totbub]
     
 
     
 def main():
-    bgruns = ["20171010_13","20171011_0","20171011_1","20171011_2"]
+    bgruns = bgOct10and11
     
-    biberuns = []
+    biberuns = BiBeSept23and24
     
     """
     ch1 files made for:
@@ -210,13 +217,13 @@ def main():
     
     """
     ch1 files made for:
-        "20171006_2","20171006_3","20171006_4","20171006_5","20171007_0"
+        "20171006_2","20171006_3","20171006_4","20171006_5","20171007_0",
         "20171007_1","20171007_2","20171007_4","20171007_5",
         "20171007_6","20171008_0","20171008_1","20171008_4","20171008_6",
         "20171008_7","20171009_0","20171009_1","20171009_2"
     
     ch0 files made for:
-        "20171006_2","20171006_3","20171006_4","20171006_5","20171007_0"
+        "20171006_2","20171006_3","20171006_4","20171006_5","20171007_0",
         "20171007_1","20171007_2","20171007_4","20171007_5",
         "20171007_6","20171008_0","20171008_1","20171008_4","20171008_6",
         "20171008_7","20171009_0","20171009_1","20171009_2"
@@ -249,10 +256,10 @@ def main():
         "20170708_2","20170708_4",
     """
     
-    #pmtnobubdiffs,pmtdiffs,dubbubdiffs = trig_difference(cfruns)
-    #goodz,diffs,coincspec,Ncoinc,ntotcoinc,totevents,totbub = zdependence(BiAlruns)
+    pmtnobubdiffs,pmtdiffs,dubbubdiffs = trig_difference(biberuns)
+    goodz,diffs,coincspec,Ncoinc,ntotcoinc,totevents,totbub = zdependence(biberuns)
     
-    #bgpmtnobubdiffs,bgpmtdiffs,bgdubbubdiffs = trig_difference(bgruns)
+    bgpmtnobubdiffs,bgpmtdiffs,bgdubbubdiffs = trig_difference(bgruns)
     bggoodz,bgdiffs,bgcoincspec,bgNcoinc,bgntotcoinc,bgtotevents,bgtotbub = zdependence(bgruns)
     
     """

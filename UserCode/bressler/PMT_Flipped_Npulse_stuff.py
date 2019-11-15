@@ -13,16 +13,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 from random import randrange
+import PMT_NIM_trig_efficiency as efficiency
+import peakAndNimTiming
 
-runpath = "/bluearc/storage/SBC-17-data/20170719_0/"
+runpath = "/bluearc/storage/SBC-17-data/20170706_1/"
 events = [evnt for evnt in listdir(runpath) if not isfile(join(runpath,evnt))]
-
+baselines = []
 V = [[],[],[],[],[],[]]
 VwithNIM = [[],[],[],[],[],[]]
 Vmax = []
 VmaxwithNIM=[]
 n=[]
-
+NIMTimeDifferences = []
 for event in events:
     e = sbc.DataHandling.GetSBCEvent.GetEvent(runpath,event)
 
@@ -40,12 +42,23 @@ for event in events:
         j=randrange(len(trac))
         trace = np.fabs(trac[i][0])
         baseline = np.mean(trace[0:100])
+        baselines.append(baseline)
         trace = trace - baseline
         pk_ind = scipy.signal.find_peaks(trace,5)
         pk_vals = [trace[k] for k in pk_ind[0]]
         Npeaks = len(pk_vals)
         n.append(Npeaks)
         othertrace = trac[i][1]
+        tPMT = np.arange(len(trace))*dt[i][0]
+        tNIM = np.arange(len(othertrace))*dt[i][1]
+        timediff = peakAndNimTiming.findPeakNimDiff(trace,othertrace,tPMT,tNIM,False)
+        if timediff:
+            NIMTimeDifferences.append(timediff)
+        """
+        for j in range(len(diffs)):
+            NIMTimeDifferences.append(diffs[j])
+            """
+        
         if i==j:
             plt.figure()
             plt.hold(True)
@@ -55,60 +68,62 @@ for event in events:
             plt.plot(x,othertrace,c='g')
             plt.xlabel('t (s)')
             plt.show
+        
         if pk_vals:
             Vmax.append(max(pk_vals))
         if min(othertrace) < -30:
             if pk_vals:
                 VmaxwithNIM.append(max(pk_vals))
                 
-        for i in range(5):
+        for i in range(len(V)):
             if Npeaks == i:
                 for val in pk_vals:
                     V[i].append(val)
 
-            if min(othertrace) < -30:
-                for val in pk_vals:
-                    VwithNIM[i].append(val)
+                if min(othertrace) < -30:
+                    for val in pk_vals:
+                        VwithNIM[i].append(val)
 
 #do the other plots
+"""
 plt.figure()
-vvals, bins, _= plt.hist(np.asarray(Vmax),110,color='r',histtype = 'step')
-vnimvals, _, _ = plt.hist(np.asarray(VmaxwithNIM),bins=bins,color='b',histtype='step')
-plt.title('RunType 902: 20170719_0')
-plt.xlabel('V max')
+plt.hist(NIMTimeDifferences,100,histtype='step')
+plt.plot([np.mean(NIMTimeDifferences),np.mean(NIMTimeDifferences)],[0,1e4])
+plt.yscale('log')
+plt.xlabel('Time Delay (s), avg = '+str(np.mean(NIMTimeDifferences)))
+plt.ylabel('Count')
 plt.show
-
+"""
+"""
 plt.figure()
 for i in range(len(V)):
     plt.hist(np.asarray(V[i]),110,histtype='step')
 plt.xlabel('V max')
 plt.yscale('log')
+plt.legend([str(i)+" peaks" for i in range(len(V))])
+plt.grid()
 plt.show
 
-vnimvals = vnimvals[vvals>0]
-vvals = vvals[vvals>0]
-
-diff = vvals-vnimvals
-perc = np.divide(vnimvals,vvals)
-perc[np.isnan(perc)]=float('+inf')
-perc=perc[perc<float('+inf')]
-
-def functn(x,a,b):
-    return scipy.stats.norm.cdf(x,a,b)
-
-params, params_cov = scipy.optimize.curve_fit(functn,bins[:len(perc)],perc,p0=[50,1])
+efficiency.NIM_efficiency_and_plot(Vmax,VmaxwithNIM,"only Vmax")
+for j in range(len(V)):
+    if V[j] and VwithNIM[j]:
+        efficiency.NIM_efficiency_and_plot(V[j],VwithNIM[j],str(j)+" peaks")
+"""
 
 plt.figure()
-plt.scatter(bins[:len(perc)],perc)
-plt.plot(bins[:len(perc)],functn(bins[:len(perc)],params[0],params[1]),color='r')
-plt.text(40,.75,"mu = "+str(params[0]),fontsize=15)
-plt.text(40,.5,"sigma = "+str(params[1]),fontsize=15)
-plt.xlabel('V max')
-plt.ylabel('efficiency')
+nvals, bins, _ = plt.hist(n,max(n),normed=True,zorder=1)
+ns = bins[:max(n)]
 
-plt.show()
-plt.figure()
-plt.hist(n,max(n))
+def pois(x,m):
+    return scipy.stats.poisson.pmf(x,m)
+
+params, params_cov = scipy.optimize.curve_fit(pois,ns,nvals)
+upper = nvals + np.sqrt(np.diag(params_cov))
+lower = nvals - np.sqrt(np.diag(params_cov))
+print(params)
+plt.plot(pois(ns,params[0]),c='r',zorder=2)
+plt.fill_between(ns,lower,upper,color='r',alpha=0.5,zorder=10)
+plt.xlabel('Number of Peaks found by scipy.signal.find_peaks()')
 plt.show()
 
 

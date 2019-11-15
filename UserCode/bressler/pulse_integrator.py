@@ -32,7 +32,27 @@ def get_pulse(trace,t,dt,pk_loc,std):
             pulse.append(trace[i])
     return [pulse,tPulse]
 
+def stitchTraces(ch0Trace,ch1Trace):
+    j = list(ch0Trace).index(128)
+    multiplier = 128/ch1Trace[j]
+    ch1Trace = [x*multiplier for x in ch1Trace]
+
+    for i in range(len(ch0Trace)):
+        if ch0Trace[i] ==128:
+            ch0Trace[i] = ch1Trace[i]
+    return ch0Trace
+
 def SBC_pulse_integrator_bressler(trace,dt):
+    """
+    takes:
+        trace - flipped (and stitched, if desired) PMT trace
+        dt    - time step
+    returns: (as a list)
+        ret         - area of pulse
+        Npeaks      - number of peaks scipy found in the trace
+        totIntegral - total area under trace
+        pk_times    - times of the peaks scipy found
+    """
     baseline = np.mean(trace[0:50])
     baseline_std = np.std(trace[0:50])
     trace = trace - baseline

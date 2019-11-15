@@ -11,8 +11,11 @@ import os
 import numpy as np
 import scipy
 import matplotlib.pyplot as plt
+from runlistscatalogue import *
+import gc
 
 def XeBCAP(datadir,run,outdir,f_low,f_high):
+    print("XeBCAP processing run %s"%run)
     runpath = datadir+'/'+run
     events = [evnt for evnt in os.listdir(runpath) if not os.path.isfile(os.path.join(runpath,evnt))]
     Nevents = len(events)
@@ -20,6 +23,7 @@ def XeBCAP(datadir,run,outdir,f_low,f_high):
     with open(outfilepath,'w') as fout:
         fout.write("event AP1subtracted AP1 AP1noise AP2subtracted AP2 AP2noise\n")
         for i in range(Nevents):
+            gc.collect()
             e = sbc.DataHandling.GetSBCEvent.GetEvent(runpath,i,'fastDAQ')
             fd = e['fastDAQ']
             t_full = fd['time']
@@ -42,7 +46,7 @@ def XeBCAP(datadir,run,outdir,f_low,f_high):
             p1 = [p1full[i] for i in range(len(p1full)) if t_full[i]>at01 and t_full[i]<at01+window_size]
             p2 = [p2full[i] for i in range(len(p2full)) if t_full[i]>at02 and t_full[i]<at02+window_size]
             N=len(p1)
-    
+
             #FFT stuff
             fft1 = np.fft.rfft(p1)
             fft1noise = np.fft.rfft(p1_noise)
@@ -56,7 +60,14 @@ def XeBCAP(datadir,run,outdir,f_low,f_high):
             ps2 = (1/(N*Fs)) * (np.absolute(fft2)**2)
             ps2noise = (1/(N*Fs)) * (np.absolute(fft2noise)**2)        
             freq = np.arange(0,Fs/2+Fs/N,Fs/N)
-            
+            """
+            print("|ps1|="+str(len(ps1)))
+            print("|ps1noise|="+str(len(ps1noise)))
+            print("|ps2|="+str(len(ps2)))
+            print("|ps2noise|="+str(len(ps2noise)))
+            print("|freq|="+str(len(freq)))
+            """
+
             #cut to the right frequencies
             ps1 = [ps1[i] for i in range(len(ps1)) if freq[i] > f_low and freq[i] < f_high]
             ps1noise = [ps1noise[i] for i in range(len(ps1noise)) if freq[i] > f_low and freq[i] < f_high]
@@ -81,11 +92,9 @@ def XeBCAP(datadir,run,outdir,f_low,f_high):
 
 
 def main():
-    runs = ['20171006_3']
+    runs = ["20170630_4"]
     
-    """
-    
-    """
+   
 
     for run in runs:
         XeBCAP('/bluearc/storage/SBC-17-data/',run,'/nashome/b/bressler/sbcoutput/',1e3,120e3)

@@ -61,6 +61,7 @@ def main():
             run_err.append(sigma)
         baselines.append(np.mean(run_baselines))
         errors.append(np.mean(run_err))
+    print(baselines)
     plt.figure()
     plt.grid(True)
     plt.plot_date(xAxisDates,baselines,markersize=12)

@@ -38,7 +38,8 @@ def PMTandPiezoPlot(datadir,run,event,gain):
     
     camOnTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] < -0.5]
     camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
-    
+    print(len(camOnTimes))
+    print(len(camOffTimes))
  
     acousticfilename = runreconpath+"AcousticAnalysis_%s.bin"%run
     a = sbc.DataHandling.ReadBinary.ReadBlock(acousticfilename)
@@ -62,7 +63,6 @@ def PMTandPiezoPlot(datadir,run,event,gain):
                     lastCamOff = camOffTimes[k]
                 elif t+at0 < camOffTimes[k]:
                     break
-            print(t+at0-lastCamOff)
             if t+at0-lastCamOff > 25e-6:
             
                 pmtdiffs.append(t)
@@ -130,7 +130,7 @@ def PMTandPiezoPlot(datadir,run,event,gain):
     plt.show
     
 def main():
-    PMTandPiezoPlot('/bluearc/storage/SBC-17-data', "20170707_6",21, 4e7)
+    PMTandPiezoPlot('/bluearc/storage/SBC-17-data', "20170707_6",43, 4e7)
     
 if __name__=="__main__":
     main()

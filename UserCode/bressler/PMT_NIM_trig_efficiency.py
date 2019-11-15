@@ -14,12 +14,13 @@ import matplotlib.pyplot as plt
 import scipy
 
 
-def NIM_efficiency_and_plot(V,VwithNIM):
+def NIM_efficiency_and_plot(V,VwithNIM,title_string):
     plt.figure()
-    vvals, bins, _= plt.hist(np.asarray(V),110,color='r',histtype = 'step')
+    vvals, bins, _= plt.hist(np.asarray(V),126,color='r',histtype = 'step')
     vnimvals, _, _ = plt.hist(np.asarray(VwithNIM),bins=bins,color='b',histtype='step')
 
     plt.xlabel('V max')
+    plt.title(title_string)
     plt.show
     
     vnimvals = vnimvals[vvals>0]
@@ -41,6 +42,7 @@ def NIM_efficiency_and_plot(V,VwithNIM):
     plt.text(40,.5,"sigma = "+str(params[1]),fontsize=15)
     plt.xlabel('V max')
     plt.ylabel('efficiency')
+    plt.title(title_string)
     plt.show()
     
     
@@ -62,7 +64,7 @@ def main():
     
             if min(othertrace) < -30:
                 VwithNIM.append(np.fabs(min(trace)))
-    NIM_efficiency_and_plot(V,VwithNIM)
+    NIM_efficiency_and_plot(V,VwithNIM,'title')
     
 if __name__=="__main__":
     main()
