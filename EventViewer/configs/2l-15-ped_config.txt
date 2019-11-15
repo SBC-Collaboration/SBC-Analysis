@@ -1,0 +1,26 @@
+Raw Directory: 
+/bluearc/storage/2l-15-data
+Scan Directory: 
+/coupp/data/home/coupp/scan_output_2l-15
+Reco Directory:
+/coupp/data/home/coupp/recon/current/2l-15/output
+PLC temperature var: 
+T1
+Relative Path to images:
+
+Image naming convention (0 for 'cam0_image0.png', 1 for 'cam0image  0.bmp'):
+1
+Number of Cameras:
+2
+Image Orientation (0 for '0', 1 for '90', 2 for '180', 3 for '270'): 
+0 
+first frame: 
+0
+trig frame: 
+5
+last frame: 
+8
+Piezo: 
+Piezo1
+Dytran:
+Dytran

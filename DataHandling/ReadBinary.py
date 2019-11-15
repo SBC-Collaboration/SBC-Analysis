@@ -7,15 +7,16 @@ from collections import OrderedDict
 # import pdb
 # import matplotlib.pyplot as plt
 
-#np.set_printoptions(threshold=np.nan)
 
 # Get the Endianness of the system and set a default file endianness
 # If the two are equivalent, the bytes will have to be flipped to be read
 system_endianness = sys.byteorder
 file_endianness = 'little'
 
+#np.set_printoptions(threshold=np.nan)
 
-def ReadBlock(file_name, max_file_size = 500):
+
+def ReadBlock(file_name, max_file_size = 2000):
     '''
     This function takes in a binary data file, and reads it in byte-wise,
     then recasts each variable
