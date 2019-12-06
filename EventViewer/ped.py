@@ -529,7 +529,8 @@ class Application(tk.Frame):
 
     # Returns a list of all config files in the config directory
     def get_configs(self):
-        all_files = os.listdir(self.config_file_directory)
+        try: all_files = os.listdir(self.config_file_directory)
+        except PermissionError: return None
         files = []
         for file in all_files:
             fileRegex = re.compile('\\w*-\\w*-ped_config.txt')
