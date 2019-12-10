@@ -107,7 +107,7 @@ class Application(tk.Frame):
         #self.reco_directory = '/coupp/data/home/coupp/recon/current/30l-16/output/'
 
         self.ped_directory = os.getcwd()
-	self.npy_directory = os.getcwd()
+        self.npy_directory = os.getcwd()
 
         self.config_file_directory = os.path.join(self.ped_directory, 'configs')
 
