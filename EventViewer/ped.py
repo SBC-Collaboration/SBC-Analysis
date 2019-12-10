@@ -109,7 +109,7 @@ class Application(tk.Frame):
         self.scan_directory = '/coupp/data/home/coupp/scan_output_SBC-17/'
         self.reco_directory = '/pnfs/coupp/persistent/grid_output/SBC-17/output/'
         #self.reco_directory = '/coupp/data/home/coupp/recon/current/30l-16/output/'
-        self.ped_directory = '/nashome/z/zsheng/Event-Viewer'
+        self.ped_directory = os.getcwd()
         self.config_file_directory = os.path.join(self.ped_directory, 'configs')
 
         # #  for running on local machine, change these based on local file location to set the correct data directories and initial dataset
@@ -263,7 +263,7 @@ class Application(tk.Frame):
         try:
             # look for npy file in the custome directory
             # has to run convert_raw_to_npy.py first to generate the file
-            self.raw_events = np.load(os.path.join('/nashome/z/zsheng/Event-Viewer','raw_events.npy'))
+            self.raw_events = np.load(os.path.join(os.getcwd(),'raw_events.npy'))
         except FileNotFoundError:
             # this error should be handled when it crops up in the code
             raise FileNotFoundError
@@ -533,6 +533,8 @@ class Application(tk.Frame):
     # Returns a list of all config files in the config directory
     def get_configs(self):
         all_files = os.listdir(self.config_file_directory)
+        try: all_files = os.listdir(self.config_file_directory)
+        except PermissionError: return None
         files = []
         for file in all_files:
             fileRegex = re.compile('\\w*-\\w*-ped_config.txt')
