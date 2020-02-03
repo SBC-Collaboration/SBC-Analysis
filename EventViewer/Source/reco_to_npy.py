@@ -211,12 +211,12 @@ def main(*args, mode="binary", use_shell=True, verbose=False):
 if __name__ == "__main__":
     # If you would like to hard-code the paths in this file, you can! Set the use_command_line
     # variable to False and then set the bin_in and npy_out paths appropriately.
-    use_command_line = True     # If use_command_line is True, then bin_in and npy_out will
+    use_command_line = False     # If use_command_line is True, then bin_in and npy_out will
                                 # automatically be replaced with the command line arguments.
     verbose = True
     mode = "binary"
     reco_dir = "/pnfs/coupp/persistent/grid_output/SBC-17/output"
-    npy_out = "/pnfs/coupp/persistent/grid_output/SBC-17/output/reco_events.npy"
+    npy_out = os.path.join(os.getcwd(),'reco_events.npy')
     if use_command_line:
         main(*sys.argv, use_shell=True, verbose=verbose)
     else:

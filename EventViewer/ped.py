@@ -195,7 +195,7 @@ class Application(tk.Frame):
         self.reset_event()
 
     def initialize_widget_values(self):
-        values = sorted(self.reco_events.dtype.names) if self.reco_events is not None else ('')
+        values = list(sorted(self.reco_events.keys())) if self.reco_events is not None else ('')
         self.add_display_var_combobox['values'] = values
         self.manual_ped_config_directory.insert(0, self.config_file_directory)
         self.ped_config_file_path_combobox['values'] = self.get_configs()
@@ -392,21 +392,22 @@ class Application(tk.Frame):
             self.reset_images()
 
     def add_display_var(self, var):
-        if (self.reco_events is not None) and (var not in self.reco_events.dtype.names):
+        if (self.reco_events is not None) and (var not in self.reco_events.keys()):
             logger.error('requested variable not in reco data: ' + var)
             return
         if var in [label['text'] for label, text, value in self.display_vars]:
             return
         label = tk.Label(self.bottom_frame_2, text=var)
         label.grid(row=len(self.display_vars) + 2, column=0)
-        text = tk.StringVar(value=self.reco_row[var]) if self.reco_row else tk.StringVar(value='N/A')
-        value = tk.Label(self.bottom_frame_2, textvariable=text, width=8)
+        try: text = tk.StringVar(value=self.reco_events[var]) 
+        except: text = tk.StringVar(value='N/A')
+        value = tk.Label(self.bottom_frame_2, textvariable=text, width=16)
         value.grid(row=len(self.display_vars) + 2, column=1, sticky='W')
         self.display_vars.append((label, text, value))
 
     def add_cut(self):
-        field = ttk.Combobox(self.bottom_frame_1, width=3, values=sorted(self.reco_events.dtype.names))
-        field.insert(0, 'nbub')
+        field = ttk.Combobox(self.bottom_frame_1, width=3, values=sorted(self.reco_events.keys()))
+        field.insert(0, 'nbubimage')
         field.grid(row=7 + len(self.cuts), column=0, columnspan=2, sticky='WE')
         operator = ttk.Combobox(self.bottom_frame_1, width=3, values=('>', '>=', '==', '<=', '<', '!='))
         operator.insert(0, '>=')
@@ -448,19 +449,29 @@ class Application(tk.Frame):
         for field, operator, value in self.cuts:
             if field.get() == '' and operator.get() == '' and value.get() == '':
                 continue
-            if field.get() not in self.reco_events.dtype.names:
+            if field.get() not in self.reco_events.keys():
                 logger.error('requested variable not in reco data')
                 field.delete(0, tk.END)
                 return
             dtype = self.reco_events[field.get()].dtype.str
-            selection.append('(self.reco_events["{}"] {} {})'.format(
-                field.get(),
-                operator.get(),
-                repr(value.get()) if 'U' in dtype else value.get()))  # add quotes if field datatype is string
+            f = self.reco_events[field.get()]
+            while type(f[0]) == np.ndarray: f = f[:,0]
+            selection.append('self.reco_events["{}"] {} {}'.format(
+                field.get(), operator.get(),
+                repr(value.get()) if 'U' in dtype else value.get()))
+                # add quotes if field datatype is string
         if len(selection) > 0:
-            exec('self.selected_events = self.reco_events[{}]'.format(' & '.join(selection)))
+            # exec('selectfilter = ({})'.format(' & '.join(selection)))
+            for i in range(len(selection)):
+                exec('selection[i] = ' + selection[i])
+            selectionfilter = [np.array(i).all() for i in list(zip(*selection))]
+            runs = self.reco_events['runid'][selectionfilter]
+            runs = [str(r[0])+'_'+str(r[1]) for r in runs]
+            evs = self.reco_events['ev'][selectionfilter]
+            self.selected_events = np.array([(runs[i], evs[i]) for i in range(len(runs))], 
+                                             dtype=[('run', 'U12'), ('ev', '<i4')])
             _, unique_rows = np.unique(self.selected_events[['run', 'ev']], return_index=True)
-            self.selected_events = self.selected_events[unique_rows]  # get rid of multiple nbub entries
+            #self.selected_events = self.selected_events[unique_rows]  # get rid of multiple nbub entries
             if len(self.selected_events) == 0:
                 logger.error('no events pass cuts')
                 self.reset_cuts()
@@ -500,8 +511,8 @@ class Application(tk.Frame):
             self.reset_event()
             return
         self.row_index += step
-        self.run = events[self.row_index]['run']
-        self.event = events[self.row_index]['ev']
+        self.run = events[self.row_index][0]
+        self.event = events[self.row_index][1]
         self.update_run_entry()
         self.image_directory = os.path.join(self.raw_directory, self.run, str(self.event),
                                             self.images_relative_path)
@@ -510,9 +521,7 @@ class Application(tk.Frame):
         self.reset_images()
         self.goto_trig_frame()
         # printing out all error messages for an event at once
-        event_path = "{raw}/{run}/{event}/Event.txt".format(raw=self.raw_directory,
-                                                            run=self.run,
-                                                            event=self.event)
+        event_path = "{raw}/{run}/{event}/Event.txt".format(raw=self.raw_directory, run=self.run, event=self.event)
         with open(event_path, "r") as event_txt:
             event_string = "Output from Event.txt:\n" + event_txt.read().strip()
         self.event_info_var.set(event_string)
@@ -766,23 +775,24 @@ class Application(tk.Frame):
     def load_reco_row(self, ibub=None):
         if self.reco_events is None:
             return
+        self.toggle_reco_widgets(state=tk.NORMAL)
         if self.selected_events is not None:
-            self.reco_row = self.selected_events[self.row_index]
+            date = self.selected_events[self.row_index]
+            # convert from row_index in selected_events to ind in reco_events
+            ind = [[(str(i[0]) + '_' + str(i[1])) == date[0] for i in self.reco_events['runid']], 
+                    list(np.equal(self.reco_events['ev'], date[1]))]
+            ind = np.argwhere([ind[0][i] & ind[1][i] for i in range(len(ind[0]))])[0][0]
+            self.reco_row = {}
+            for k,v in self.reco_events.items():
+                self.reco_row[k] = v[ind]
         else:
-            reco_index = self.raw_events[self.row_index]['reco index']
-            if reco_index > 0:
-                self.reco_row = self.reco_events[reco_index]
-            else:
-                self.reco_row = None
-                self.toggle_reco_widgets(state=tk.DISABLED)
-                for _, text, _ in self.display_vars:
-                    text.set('N/A')
-                return
+            self.reco_row = {}
+            for k,v in self.reco_events.items():
+                self.reco_row[k] = v[self.row_index]
         if ibub:
             offset = ibub - 1 if ibub > 1 else 0
             row = self.get_row(self.reco_events)
             self.reco_row = self.reco_events[row + offset]
-        self.toggle_reco_widgets(state=tk.NORMAL)
         for label, text, _ in self.display_vars:
             var = label['text']
             dtype = self.reco_row[var].dtype.str
@@ -1268,15 +1278,21 @@ class Application(tk.Frame):
     def load_reco(self):
         self.reco_row = None
         self.reco_events = None
-        path = os.path.join(self.npy_directory, 'reco_eventsNOTYET.npy')
-        if not os.path.isfile(path):
+        reco_files = ['AcousticAnalysis', 'DytranAnalysis', 'EventAnalysis', 'HistoryAnalysis', 'PMTfastDAQalignment', 'TimingAnalysis', 'HumanGetBub'] 
+        paths = [os.path.join(self.reco_directory, i + '_all.bin') for i in reco_files]
+        if not any([os.path.isfile(i) for i in paths]):
             logger.error('cannot find reco_data.npy, reco data will be disabled')
             self.toggle_reco_widgets(state=tk.DISABLED)
             for _, text, _ in self.display_vars:
                 text.set('N/A')
             return
-        logger.info('using reco data from {}'.format(path))
-        events = np.load(path)
+        self.toggle_reco_widgets(state=tk.NORMAL)
+        logger.info('using reco data from {}'.format(self.reco_directory))
+        events = [ReadBinary.ReadBlock(os.path.join(self.reco_directory, f + '_all.bin')) for f in reco_files]
+        bubfilter = events[6]['ibubimage'] <= 1
+        for k, v in events[6].items():
+            events[6][k] = v[bubfilter]
+        events = {**events[0], **events[1], **events[2], **events[3], **events[4], **events[5], **events[6]}
         if len(events) == 0:
             logger.error('could not find raw data for any reco events')
             return
@@ -1751,12 +1767,12 @@ class Application(tk.Frame):
         self.remove_cut_button = tk.Button(self.bottom_frame_1, text='delete cut', command=self.remove_cut)
         self.remove_cut_button.grid(row=5, column=2, columnspan=2, sticky='WE')
 
-        self.display_reco_label = tk.Label(self.bottom_frame_2, text='Variables from merged_all')
+        self.display_reco_label = tk.Label(self.bottom_frame_2, text='Variables from reco')
         self.display_reco_label.grid(row=0, column=0, sticky='WE')
 
         self.add_display_var_combobox = ttk.Combobox(self.bottom_frame_2)
         self.add_display_var_combobox.grid(row=1, column=0, sticky='WE')
-
+        
         self.add_display_var_button = tk.Button(
             self.bottom_frame_2,
             text='add',
@@ -1764,10 +1780,9 @@ class Application(tk.Frame):
         self.add_display_var_button.grid(row=1, column=1, sticky='WE')
 
         self.display_vars = []
-        self.add_display_var('nbub')
-        #         self.add_display_var('getBub_success')
-        self.add_display_var('fastDAQ_t0')
-        self.add_display_var('te')
+        self.add_display_var('nbubimage')
+        self.add_display_var('PMT_trigt0_sec')
+        self.add_display_var('tEvent')
 
         self.back_frame_button = tk.Button(self.bottom_frame_3_top, text='back frame')
         self.back_frame_button['command'] = lambda: self.load_frame(int(self.frame) - 1)
@@ -1916,8 +1931,8 @@ ROOT = tk.Tk()
 ROOT.lift()
 ROOT.attributes('-topmost', True)
 ROOT.after_idle(ROOT.attributes, '-topmost', False)
-WIDTH = 1650  # width for the Tk root
-HEIGHT = 950  # height for the Tk root
+WIDTH = 1300  # width for the Tk root
+HEIGHT = 900  # height for the Tk root
 X = 0  # x coordinate to place root window at
 Y = 0  # y coordinate to place root window at
 # set the dimensions of the screen and where it is placed
