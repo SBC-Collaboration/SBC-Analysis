@@ -151,6 +151,10 @@ class Application(tk.Frame):
         self.piezo_plot_t0_checkbutton_var_bottom = tk.BooleanVar(value=False)
         self.piezo_plot_t0_checkbutton_vars = [self.piezo_plot_t0_checkbutton_var_top,
                                                self.piezo_plot_t0_checkbutton_var_bottom]
+        self.piezo_plot_keep_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.piezo_plot_keep_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.piezo_plot_keep_checkbutton_vars = [self.piezo_plot_keep_checkbutton_var_top,
+                                               self.piezo_plot_keep_checkbutton_var_bottom]
         self.dytran_plot_t0_checkbutton_var = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_top = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_bottom = tk.BooleanVar(value=False)
@@ -390,7 +394,14 @@ class Application(tk.Frame):
             self.load_reco_row()
             self.image_directory = os.path.join(self.raw_directory, run, str(event), self.images_relative_path)
             self.reset_images()
-
+    
+    def set_display_text(self, var, text):
+        display_var = self.reco_row[var]
+        labels = ['PMTmatch_iPMThit', 'PMTmatch_lag', 'PMTmatch_pulse_tpeak', 'PMTmatch_nclusters', 'PMTmatch_ix', 'PMTmatch_npeaks', 'PMTmatch_nphe', 'PMTmatch_baserms', 'PMTmatch_t0', 'CAMstate', 't_nearestVetohit', 'PMTmatch_pulse_t90', 't_nearestPMThit', 'PMTmatch_sat', 'PMTmatch_baseline', 'PMTmatch_coinc', 'PMTmatch_pulse_tstart', 'PMTmatch_pulse_tend', 'PMTmatch_pulse_t10', 'PMTmatch_pulse_height', 'PMTmatch_pulse_area', 'PMTmatch_maxpeak', 'PumpActiveTime', 'PumpActiveCycle', 'led_tau', 'bubble_t0', 'peak_t0']
+        if var in labels: display_var = display_var[0]
+        if type(display_var)==np.float64: text.set('{:.3f}'.format(display_var))
+        else: text.set(display_var)
+    
     def add_display_var(self, var):
         if (self.reco_events is not None) and (var not in self.reco_events.keys()):
             logger.error('requested variable not in reco data: ' + var)
@@ -399,11 +410,21 @@ class Application(tk.Frame):
             return
         label = tk.Label(self.bottom_frame_2, text=var)
         label.grid(row=len(self.display_vars) + 2, column=0)
-        try: text = tk.StringVar(value=self.reco_events[var]) 
-        except: text = tk.StringVar(value='N/A')
-        value = tk.Label(self.bottom_frame_2, textvariable=text, width=16)
-        value.grid(row=len(self.display_vars) + 2, column=1, sticky='W')
+        text = tk.StringVar()
+        try: self.set_display_text(var, text)
+        except: text.set('N/A')
+        value = tk.Label(self.bottom_frame_2, textvariable=text)
+        value.grid(row=len(self.display_vars) + 2, column=1, sticky='W', columnspan=2)
         self.display_vars.append((label, text, value))
+    
+    def remove_display_var(self):
+        if not self.display_vars:
+            return
+        else:
+            label, text, value =  self.display_vars.pop()
+            label.grid_forget()
+            value.grid_forget()
+        # self.refresh_display_vars()
 
     def add_cut(self):
         field = ttk.Combobox(self.bottom_frame_1, width=3, values=sorted(self.reco_events.keys()))
@@ -795,8 +816,7 @@ class Application(tk.Frame):
             self.reco_row = self.reco_events[row + offset]
         for label, text, _ in self.display_vars:
             var = label['text']
-            dtype = self.reco_row[var].dtype.str
-            text.set('{:.4f}'.format(self.reco_row[var]) if 'f' in dtype else self.reco_row[var])
+            self.set_display_text(var, text)
 
     def toggle_reco_widgets(self, state):
         self.draw_crosshairs_button.config(state=state)
@@ -873,7 +893,7 @@ class Application(tk.Frame):
             canvas.delete('crosshair')
         if not self.draw_crosshairs_var.get() or not self.reco_row:  # no reco row means we don't have reco data
             return
-        if self.reco_row['nbub'] < 1:
+        if self.reco_row['nbubimage'] < 1:
             return
         for ibub in range(1, self.reco_row['nbub'] + 1):
             self.load_reco_row(ibub)
@@ -1534,7 +1554,8 @@ class Application(tk.Frame):
         # self.piezo_ending_time_entry_bottom.grid(row=5, column=1, sticky='WE')
         # self.piezo_ending_time_entries = [self.piezo_ending_time_entry_top,
         #                                   self.piezo_ending_time_entry_bottom]
-
+        
+        # t0 checkbutton
         self.piezo_plot_t0_checkbutton_top = tk.Checkbutton(
             self.piezo_tab_left_top,
             text='Show t0',
@@ -1549,15 +1570,32 @@ class Application(tk.Frame):
         self.piezo_plot_t0_checkbutton_bottom.grid(row=7, column=0, columnspan=2, sticky='WE')
         self.piezo_plot_t0_checkbuttons = [self.piezo_plot_t0_checkbutton_top,
                                            self.piezo_plot_t0_checkbutton_bottom]
-
+        
+        # keep checkbutton
+        self.piezo_plot_keep_checkbutton_top = tk.Checkbutton(
+            self.piezo_tab_left_top,
+            text='Keep',
+            variable=self.piezo_plot_keep_checkbutton_var_top,
+            command=lambda: self.draw_fastDAQ_piezo(0))
+        self.piezo_plot_keep_checkbutton_top.grid(row=8, column=0, sticky='WE')
+        self.piezo_plot_keep_checkbutton_bottom = tk.Checkbutton(
+            self.piezo_tab_left_bottom,
+            text='Keep',
+            variable=self.piezo_plot_keep_checkbutton_var_bottom,
+            command=lambda: self.draw_fastDAQ_piezo(1))
+        self.piezo_plot_keep_checkbutton_bottom.grid(row=8, column=0, sticky='WE')
+        self.piezo_plot_keep_checkbuttons = [self.piezo_plot_keep_checkbutton_top,
+                                           self.piezo_plot_keep_checkbutton_bottom]
+        # reload button
         self.reload_fastDAQ_piezo_button_top = tk.Button(self.piezo_tab_left_top, text='reload',
                                                      command=lambda: self.draw_fastDAQ_piezo(0))
-        self.reload_fastDAQ_piezo_button_top.grid(row=8, column=0, sticky='WE')
+        self.reload_fastDAQ_piezo_button_top.grid(row=8, column=1, sticky='WE')
         self.reload_fastDAQ_piezo_button_bottom = tk.Button(self.piezo_tab_left_bottom, text='reload',
                                                      command=lambda: self.draw_fastDAQ_piezo(1))
-        self.reload_fastDAQ_piezo_button_bottom.grid(row=8, column=0, sticky='WE')
+        self.reload_fastDAQ_piezo_button_bottom.grid(row=8, column=1, sticky='WE')
         self.reload_fastDAQ_piezo_buttons = [self.reload_fastDAQ_piezo_button_top,
                                              self.reload_fastDAQ_piezo_button_bottom]
+        
         # PMT tab
         self.pmt_settings_frame = tk.Frame(master=self.PMT_tab, bd=5, relief=tk.SUNKEN)
         self.pmt_settings_frame.grid(row=0, column=0, sticky=tk.NW)
@@ -1768,21 +1806,24 @@ class Application(tk.Frame):
         self.remove_cut_button.grid(row=5, column=2, columnspan=2, sticky='WE')
 
         self.display_reco_label = tk.Label(self.bottom_frame_2, text='Variables from reco')
-        self.display_reco_label.grid(row=0, column=0, sticky='WE')
+        self.display_reco_label.grid(row=0, column=0, sticky='WE', columnspan=2)
+
+        self.remove_display_var_button = tk.Button(self.bottom_frame_2, text='del', command=self.remove_display_var)
+        self.remove_display_var_button.grid(row=0, column=2, sticky='WE', ipadx=0)
 
         self.add_display_var_combobox = ttk.Combobox(self.bottom_frame_2)
-        self.add_display_var_combobox.grid(row=1, column=0, sticky='WE')
+        self.add_display_var_combobox.grid(row=1, column=0, sticky='WE', columnspan=2)
         
         self.add_display_var_button = tk.Button(
             self.bottom_frame_2,
             text='add',
             command=lambda: self.add_display_var(self.add_display_var_combobox.get()))
-        self.add_display_var_button.grid(row=1, column=1, sticky='WE')
+        self.add_display_var_button.grid(row=1, column=2, sticky='WE', ipadx=0)
 
         self.display_vars = []
         self.add_display_var('nbubimage')
-        self.add_display_var('PMT_trigt0_sec')
-        self.add_display_var('tEvent')
+        self.add_display_var('PMTmatch_nphe')
+        self.add_display_var('Event_Pset')
 
         self.back_frame_button = tk.Button(self.bottom_frame_3_top, text='back frame')
         self.back_frame_button['command'] = lambda: self.load_frame(int(self.frame) - 1)
