@@ -153,13 +153,11 @@ class Application(tk.Frame):
                                                self.piezo_plot_t0_checkbutton_var_bottom]
         self.piezo_plot_keep_checkbutton_var_top = tk.BooleanVar(value=False)
         self.piezo_plot_keep_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.piezo_plot_keep_checkbutton_vars = [self.piezo_plot_keep_checkbutton_var_top,
-                                               self.piezo_plot_keep_checkbutton_var_bottom]
+        self.piezo_plot_keep_checkbutton_vars = [self.piezo_plot_keep_checkbutton_var_top, self.piezo_plot_keep_checkbutton_var_bottom]
         self.dytran_plot_t0_checkbutton_var = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_top = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.load_fastDAQ_piezo_checkbutton_vars = [self.load_fastDAQ_piezo_checkbutton_var_top,
-                                                    self.load_fastDAQ_piezo_checkbutton_var_bottom]
+        self.load_fastDAQ_piezo_checkbutton_vars = [self.load_fastDAQ_piezo_checkbutton_var_top, self.load_fastDAQ_piezo_checkbutton_var_bottom]
         self.isgoodtrigger_checkbutton_var = tk.BooleanVar(value=True)
         self.crosshairsgood_checkbutton_var = tk.BooleanVar(value=True)
         for i in range(9):
@@ -196,6 +194,7 @@ class Application(tk.Frame):
         self.initialize_widget_values()
         ## Bubble detections are stored in the reco directory
         self.detected_bubbles = ReadBinary.ReadBlock(os.path.join(self.reco_directory, "ImageAnalysis_all.bin"))
+        self.detected_bubbles.update(ReadBinary.ReadBlock(os.path.join(self.reco_directory, "HumanGetBub_all.bin")))
         self.reset_event()
 
     def initialize_widget_values(self):
@@ -655,14 +654,10 @@ class Application(tk.Frame):
             logger.error('Raw events not found for this dataset. Please ensure that the raw_events.npy file is present')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get():
-                self.load_fastDAQ_piezo_checkbutton_vars[0].set(False)
+            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_plot_keep_checkbutton_vars[0].get():
                 self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get():
-                self.load_fastDAQ_piezo_checkbutton_vars[1].set(False)
+            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_plot_keep_checkbutton_vars[1].get():
                 self.load_fastDAQ_piezo(1)
-            for child in self.bottom_frame_1.winfo_children():
-                child.config(state=tk.DISABLED)
 
     # Method for changing data directories
     def update_directories(self):
@@ -701,14 +696,10 @@ class Application(tk.Frame):
                 'exist in their respective directories')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get():
-                self.load_fastDAQ_piezo_checkbutton_vars[0].set(False)
+            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_plot_keep_checkbutton_vars[0].get():
                 self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get():
-                self.load_fastDAQ_piezo_checkbutton_vars[1].set(False)
+            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_plot_keep_checkbutton_vars[1].get():
                 self.load_fastDAQ_piezo(1)
-            for child in self.bottom_frame_1.winfo_children():
-                child.config(state=tk.DISABLED)
 
     # for when manual config path is updated
     def new_config_update(self):
@@ -941,8 +932,13 @@ class Application(tk.Frame):
         self.fastDAQ_event = GetEvent(path, self.event, "fastDAQ")
         self.refresh_fastDAQ_piezo_choices()
         if self.load_fastDAQ_piezo_checkbutton_vars[index].get():
-            self.toggle_widgets(self.piezo_checkbutton_frames[index])
-        self.draw_fastDAQ_piezo(index)
+            for widget in self.piezo_checkbuttons[index]: 
+                widget.configure(state=tk.NORMAL)
+        else: 
+            for widget in self.piezo_checkbuttons[index]: 
+                widget.configure(state=tk.DISABLED)
+        if not self.piezo_plot_keep_checkbutton_vars[index].get(): 
+            self.draw_fastDAQ_piezo(index)
         return
 
     def draw_all_fastDAQ_piezo_PMT_time(self):
@@ -973,12 +969,11 @@ class Application(tk.Frame):
         return
 
     def draw_fastDAQ_piezo(self, index):
-
         if not self.load_fastDAQ_piezo_checkbutton_vars[index].get():
             return
         if int(self.run_type) == 10:
             self.error += "Not allowed to view piezo data for run_type=10\n"
-        self.piezos = self.get_active_piezo_checkboxes(index)
+        self.piezos[index] = self.get_active_piezo_checkboxes(index)
         try:
             self.piezo_cutoff_low = int(self.piezo_cutoff_low_entries[index].get())
             self.piezo_cutoff_high = int(self.piezo_cutoff_high_entries[index].get())
@@ -986,7 +981,7 @@ class Application(tk.Frame):
             logger.error(
                 "Invalid types for cutoffs. Frequency cutoffs must be int, time cutoffs must be int or float.")
             return
-        self.draw_filtered_piezo_trace(self.piezos, self.piezo_cutoff_low, self.piezo_cutoff_high, index)
+        self.draw_filtered_piezo_trace(self.piezos[index], self.piezo_cutoff_low, self.piezo_cutoff_high, index)
         self.draw_fastDAQ_piezo_PMT_time(index)
         return
 
@@ -1023,14 +1018,13 @@ class Application(tk.Frame):
                     #TODO: MAKE SURE THIS BUTTON IS DISABLED IF PMTs AREN'T LOADED
                     ### NEW VVV ###
                     # 1. Load binary reco file
-                    acoustic_data_path = "{reco}/{run}/AcousticAnalysis_{run}.bin".format(reco=self.reco_directory,
-                                                                                          run=self.run)
-                    print("DEBUG:", acoustic_data_path)
-                    print("DEBUG: FETCHING DATA")
+                    acoustic_data_path = "{reco}/{run}/AcousticAnalysis_{run}.bin".format(reco=self.reco_directory,run=self.run)
+                    # print("DEBUG:", acoustic_data_path)
+                    # print("DEBUG: FETCHING DATA")
                     self.acoustic_data = ReadBinary.ReadBlock(acoustic_data_path,max_file_size=2000)
-                    print("DEBUG: DATA FETCHED")
+                    # print("DEBUG: DATA FETCHED")
                     self.piezo_t0 = self.acoustic_data["bubble_t0"][self.event]
-                    print("DEBUG:", self.piezo_t0)
+                    # print("DEBUG:", self.piezo_t0)
                     self.piezo_ax[index].axvline(x=self.piezo_t0[0], linestyle="dashed", color="r", label="t0[0]")
                     self.piezo_ax[index].axvline(x=self.piezo_t0[1], linestyle="dashed", color="b", label="t0[1]")
                     temp_legend = ["t0[0]", "t0[1]"]
@@ -1052,22 +1046,18 @@ class Application(tk.Frame):
                     #     self.incremented_piezo_event = False
                     ### OLD ^^^ ###
 
-
-
                 temp_sticky = tk.NW if index == 0 else tk.SW
-                self.place_graph_and_toolbar(figure=self.piezo_fig[index], master=self.piezo_tab_rights[index],
-                                             sticky=temp_sticky)
+                self.place_graph_and_toolbar(figure=self.piezo_fig[index], master=self.piezo_tab_rights[index], sticky=temp_sticky)
             # MAKE THE LEGEND
             if self.piezo_ax[index] is not None:
                 self.piezo_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
 
         except (KeyError, IndexError):
-
             self.error += "Piezo data not found.\n"
             logger.error("Piezo data not found.")
             self.destroy_children(self.piezo_tab_rights[index])
             canvas = tk.Canvas(self.piezo_tab_rights[index], width=self.init_image_width, height=self.init_image_height)
-            self.load_fastDAQ_piezo_checkbuttons[index].toggle()
+            # self.load_fastDAQ_piezo_checkbuttons[index].toggle()
             self.reset_zoom(canvas)
         return
 
@@ -1078,6 +1068,7 @@ class Application(tk.Frame):
             if self.piezo_checkbox_vars[index][n].get():
                 out.append(self.piezo_checkbuttons[index][n]["text"])
         #out.append(self.piezo_checkbuttons[index][n]["text"] if self.piezo_checkbox_vars[index][n].get() else 0 for n in range(len(self.piezo_checkbox_vars[index])))
+        self.piezos[index] = out
         return out
 
     def draw_piezos_from_checkbuttons(self, index=0):
@@ -1088,10 +1079,7 @@ class Application(tk.Frame):
             if self.piezo_checkbox_vars[index][n].get():
                 label = self.piezo_checkbuttons[index][n]["text"]
                 print("(Not) Plotting", label)
-
-
         return
-
 
     def refresh_fastDAQ_piezo_choices(self):
         if self.fastDAQ_event["fastDAQ"]["loaded"] is False:
@@ -1100,23 +1088,13 @@ class Application(tk.Frame):
         new_choices = list(self.fastDAQ_event["fastDAQ"]["multiboards"][board].keys())
         exclude = ["time", "loaded", "bindata", "caldata", "multiboards"]
         choices = [choice for choice in new_choices if choice not in exclude]
-        del self.piezo_checkbox_vars[0][:]
-        del self.piezo_checkbox_vars[1][:]
-        del self.piezo_checkbuttons[0][:]
-        del self.piezo_checkbuttons[1][:]
         for n in range(len(choices)):
             self.piezo_checkbox_vars[0].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[0], value=0))
-            self.piezo_checkbuttons[0].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[0],
-                                                             text=choices[n], variable=self.piezo_checkbox_vars[0][-1],
-                                                             command=lambda : self.draw_fastDAQ_piezo(0),
-                                                             state = tk.DISABLED))
+            self.piezo_checkbuttons[0].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[0], text=choices[n], variable=self.piezo_checkbox_vars[0][-1], command = lambda:self.draw_fastDAQ_piezo(0), state = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[0].get() else tk.DISABLED))
             self.piezo_checkbuttons[0][-1].grid(row=n, column=0, sticky=tk.N)
-
+            
             self.piezo_checkbox_vars[1].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[1], value=0))
-            self.piezo_checkbuttons[1].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[1],
-                                                             text=choices[n], variable=self.piezo_checkbox_vars[1][-1],
-                                                             command=lambda : self.draw_fastDAQ_piezo(1),
-                                                             state=tk.DISABLED))
+            self.piezo_checkbuttons[1].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[1], text=choices[n], variable=self.piezo_checkbox_vars[1][-1], command = lambda:self.draw_fastDAQ_piezo(1), state = tk.DISABLED))
             self.piezo_checkbuttons[1][-1].grid(row=n, column=0, sticky=tk.N)
         return
 
@@ -1183,8 +1161,7 @@ class Application(tk.Frame):
             self.piezo_plot_t0_checkbutton_var_bottom.set(0)
             self.disable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.piezo_plot_t0_checkbutton_top,self.piezo_plot_t0_checkbutton_bottom])
             return
-        self.enable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.piezo_plot_t0_checkbutton_top,
-                                                                        self.piezo_plot_t0_checkbutton_bottom])
+        self.enable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.piezo_plot_t0_checkbutton_top,self.piezo_plot_t0_checkbutton_bottom])
         pmt_data_path = "{raw}/{run}/{event}/PMTtraces.bin".format(raw=self.raw_directory,
                                                                    run=self.run, event=self.event)
         align_data_path = "{reco}/{run}/PMTfastDAQalignment_{run}.bin".format(reco=self.reco_directory,
@@ -1418,6 +1395,7 @@ class Application(tk.Frame):
         self.piezo_line = [None, None]
         self.piezo_fig = [None, None]
         # Now within the piezos frames setup stuff
+        self.piezos = [[],[]]
         self.load_fastDAQ_piezo_checkbutton_top = tk.Checkbutton(
             self.piezo_tab_left_top,
             text='Load fastDAQ',
@@ -1459,8 +1437,7 @@ class Application(tk.Frame):
                                    self.piezo_checkbuttons_bot]
         # Build the checkbuttons
 
-
-
+        # piezo dropdown
         #self.piezo_dropdown_var_top = tk.StringVar(master=self.piezo_tab_right_top, value = choices[0])
         self.piezo_dropdown_var_bottom = tk.StringVar(master=self.piezo_tab_right_top, value=choices[0])
         self.piezo_dropdown_vars = [None,
@@ -1477,6 +1454,7 @@ class Application(tk.Frame):
         #self.piezo_dropdowns = [None,
         #                        self.piezo_dropdown_bottom]
 
+        # piezo cutoff
         self.piezo_cutoff_low_label_top = tk.Label(self.piezo_tab_left_top, text='Freq cutoff low:')
         self.piezo_cutoff_low_label_top.grid(row=2, column=0, sticky='WE')
         self.piezo_cutoff_low_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Freq cutoff low:')
@@ -1821,9 +1799,9 @@ class Application(tk.Frame):
         self.add_display_var_button.grid(row=1, column=2, sticky='WE', ipadx=0)
 
         self.display_vars = []
-        self.add_display_var('nbubimage')
-        self.add_display_var('PMTmatch_nphe')
+        self.add_display_var('Event_livetime')
         self.add_display_var('Event_Pset')
+        self.add_display_var('PMTmatch_nphe')
 
         self.back_frame_button = tk.Button(self.bottom_frame_3_top, text='back frame')
         self.back_frame_button['command'] = lambda: self.load_frame(int(self.frame) - 1)
