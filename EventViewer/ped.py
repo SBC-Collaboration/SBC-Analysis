@@ -942,12 +942,15 @@ class Application(tk.Frame):
         path = os.path.join(self.raw_directory, self.run)
         self.fastDAQ_event = GetEvent(path, self.event, "fastDAQ")
         self.refresh_fastDAQ_piezo_choices()
-        if self.load_fastDAQ_piezo_checkbutton_vars[index].get():
-            for widget in self.piezo_checkbuttons[index]: 
-                widget.configure(state=tk.NORMAL)
-        else: 
-            for widget in self.piezo_checkbuttons[index]: 
-                widget.configure(state=tk.DISABLED)
+        
+        for i in range(len(self.piezo_checkbox_vars[index])):
+            self.piezo_checkbuttons[index][i]['state'] = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[index].get() else tk.DISABLED
+#        if self.load_fastDAQ_piezo_checkbutton_vars[index].get():
+#            for widget in self.piezo_checkbuttons[index]: 
+#                widget.configure(state=tk.NORMAL)
+#        else: 
+#            for widget in self.piezo_checkbuttons[index]: 
+#                widget.configure(state=tk.DISABLED)
         if not self.piezo_keep_plot_checkbutton_vars[index].get(): 
             self.draw_fastDAQ_piezo(index)
         return
@@ -992,6 +995,9 @@ class Application(tk.Frame):
             logger.error(
                 "Invalid types for cutoffs. Frequency cutoffs must be int, time cutoffs must be int or float.")
             return
+        if not self.piezos[index]:
+            self.destroy_children(self.piezo_tab_rights[index])
+            return
         self.draw_filtered_piezo_trace(self.piezos[index], self.piezo_cutoff_low, self.piezo_cutoff_high, index)
         self.draw_fastDAQ_piezo_PMT_time(index)
         return
@@ -1002,6 +1008,7 @@ class Application(tk.Frame):
             if self.piezo_ax[index] is not None:
                 for line in self.piezo_ax[index].lines[:]:
                     line.remove()
+            ylimits = [[],[]]
             for piezo in piezos:
                 if piezo not in self.fastDAQ_event["fastDAQ"]["multiboards"][0] \
                         and piezo in self.fastDAQ_event["fastDAQ"]["multiboards"][1]:
@@ -1014,7 +1021,7 @@ class Application(tk.Frame):
                 filtered_piezo_v = scipy.signal.lfilter(b, a, filtered_piezo_v)
                 if self.piezo_fig[index] is None:
                     self.piezo_fig[index], self.piezo_ax[index] = plt.subplots(figsize=(8, 3), dpi=100)
-                self.piezo_ax[index].set_title(piezo)
+                self.piezo_ax[index].set_title('fastDAQ '+self.run+' '+str(self.event))
                 self.piezo_ax[index].set_xlabel("[s]")
                 self.piezo_ax[index].set_ylabel("Amplitude [get units later]")
                 self.piezo_ax[index].set_xlim(piezo_time[0], piezo_time[-1])
@@ -1023,7 +1030,8 @@ class Application(tk.Frame):
                     if cb["text"] == piezo:
                         plot_color = color
                 self.piezo_ax[index].plot(piezo_time, filtered_piezo_v, color=plot_color, label=piezo) # TODO: COLOR
-                self.piezo_ax[index].set_ylim([-max(abs(filtered_piezo_v))*1.3, max(abs(filtered_piezo_v))*1.3])
+                ylimits[0].append(min(filtered_piezo_v))
+                ylimits[1].append(max(filtered_piezo_v))
                 temp_legend=[]
                 if self.piezo_plot_t0_checkbutton_vars[index].get():
                     #TODO: MAKE SURE THIS BUTTON IS DISABLED IF PMTs AREN'T LOADED
@@ -1059,6 +1067,10 @@ class Application(tk.Frame):
 
                 temp_sticky = tk.NW if index == 0 else tk.SW
                 self.place_graph_and_toolbar(figure=self.piezo_fig[index], master=self.piezo_tab_rights[index], sticky=temp_sticky)
+            if ylimits != [[],[]]:
+                ylimits = [min(ylimits[0]), max(ylimits[1])]
+            if ylimits[0]!=ylimits[1]: 
+                    self.piezo_ax[index].set_ylim([ylimits[0] - 0.1*(ylimits[1]-ylimits[0]), ylimits[1]+0.1*(ylimits[1]-ylimits[0])])
             # MAKE THE LEGEND
             if self.piezo_ax[index] is not None:
                 self.piezo_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
@@ -1073,13 +1085,12 @@ class Application(tk.Frame):
         return
 
     def get_active_piezo_checkboxes(self, index):
-        out = [ ]
+        out = []
         n_cb = len(self.piezo_checkbox_vars[index])
         for n in range(n_cb):
-            if self.piezo_checkbox_vars[index][n].get():
+            if self.piezo_checkbox_vars[index][n].get() and self.piezo_checkbuttons[index][n]["text"] not in out:
                 out.append(self.piezo_checkbuttons[index][n]["text"])
         #out.append(self.piezo_checkbuttons[index][n]["text"] if self.piezo_checkbox_vars[index][n].get() else 0 for n in range(len(self.piezo_checkbox_vars[index])))
-        self.piezos[index] = out
         return out
 
     def draw_piezos_from_checkbuttons(self, index=0):
@@ -1099,13 +1110,14 @@ class Application(tk.Frame):
         new_choices = list(self.fastDAQ_event["fastDAQ"]["multiboards"][board].keys())
         exclude = ["time", "loaded", "bindata", "caldata", "multiboards"]
         choices = [choice for choice in new_choices if choice not in exclude]
+        self.piezo_checkbox_vars = [[],[]]
         for n in range(len(choices)):
-            self.piezo_checkbox_vars[0].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[0], value=0))
+            self.piezo_checkbox_vars[0].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[0], value=1 if choices[n] in self.piezos[0] and self.load_fastDAQ_piezo_checkbutton_vars[0].get() else 0))
             self.piezo_checkbuttons[0].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[0], text=choices[n], variable=self.piezo_checkbox_vars[0][-1], command = lambda:self.draw_fastDAQ_piezo(0), state = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[0].get() else tk.DISABLED))
             self.piezo_checkbuttons[0][-1].grid(row=n, column=0, sticky=tk.N)
             
-            self.piezo_checkbox_vars[1].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[1], value=0))
-            self.piezo_checkbuttons[1].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[1], text=choices[n], variable=self.piezo_checkbox_vars[1][-1], command = lambda:self.draw_fastDAQ_piezo(1), state = tk.DISABLED))
+            self.piezo_checkbox_vars[1].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[1], value=1 if choices[n] in self.piezos[1] and self.load_fastDAQ_piezo_checkbutton_vars[1].get() else 0))
+            self.piezo_checkbuttons[1].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[1], text=choices[n], variable=self.piezo_checkbox_vars[1][-1], command = lambda:self.draw_fastDAQ_piezo(1), state = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[1].get() else tk.DISABLED))
             self.piezo_checkbuttons[1][-1].grid(row=n, column=0, sticky=tk.N)
         return
 
@@ -1296,7 +1308,6 @@ class Application(tk.Frame):
             return
         if int(self.run_type) == 10:
             self.error += "Not allowed to view slowDAQ data for run_type=10\n"
-        self.destroy_children(self.slow_tab_rights[index])
         self.draw_slowDAQ_traces(index)
         return
     
@@ -1304,6 +1315,8 @@ class Application(tk.Frame):
         if self.slow_ax[index] is not None:
             for line in self.slow_ax[index].lines[:]:
                 line.remove()
+        ylimits = [[],[]]
+        # find time of global trigger and recenter
         trig_ind = np.where(self.slowDAQ_event['slowDAQ']["TriggerLatch"]==0)[0][-1]
         time_offset = self.slowDAQ_event['slowDAQ']["elapsed_time"][trig_ind]
         slow_time = self.slowDAQ_event['slowDAQ']["elapsed_time"] - time_offset
@@ -1312,7 +1325,7 @@ class Application(tk.Frame):
             value = self.slowDAQ_event['slowDAQ'][var]
             if self.slow_fig[index] is None:
                 self.slow_fig[index], self.slow_ax[index] = plt.subplots(figsize=(8, 3), dpi=100)
-            self.slow_ax[index].set_title(var)
+            self.slow_ax[index].set_title('slowDAQ '+str(self.run)+' '+str(self.event))
             self.slow_ax[index].set_xlabel("[s]")
             self.slow_ax[index].set_ylabel("Amplitude [get units later]")
             self.slow_ax[index].set_xlim(slow_time[0], slow_time[-1])
@@ -1320,11 +1333,16 @@ class Application(tk.Frame):
             var_pos = np.where(var_list==var)[0][0]
             plot_color = self.slowDAQ_colors[var_pos%len(self.slowDAQ_colors)]
             self.slow_ax[index].plot(slow_time, value, color=plot_color, label=var)
-            if max(value)!=min(value): 
-                self.slow_ax[index].set_ylim([min(value), max(value)])
+            ylimits[0].append(min(value))
+            ylimits[1].append(max(value))
             temp_legend=[]                
             temp_sticky = tk.NW if index == 0 else tk.SW
             self.place_graph_and_toolbar(figure=self.slow_fig[index], master=self.slow_tab_rights[index], sticky=temp_sticky)
+        
+        if ylimits != [[],[]]:
+            ylimits = [min(ylimits[0]), max(ylimits[1])]
+        if ylimits[0]!=ylimits[1]: 
+                self.slow_ax[index].set_ylim([ylimits[0] - 0.1*(ylimits[1]-ylimits[0]), ylimits[1]+0.1*(ylimits[1]-ylimits[0])])
         # MAKE THE LEGEND
         if self.slow_ax[index] is not None:
             self.slow_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
