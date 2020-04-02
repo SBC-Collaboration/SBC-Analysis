@@ -151,9 +151,9 @@ class Application(tk.Frame):
         self.piezo_plot_t0_checkbutton_var_bottom = tk.BooleanVar(value=False)
         self.piezo_plot_t0_checkbutton_vars = [self.piezo_plot_t0_checkbutton_var_top,
                                                self.piezo_plot_t0_checkbutton_var_bottom]
-        self.piezo_plot_keep_checkbutton_var_top = tk.BooleanVar(value=False)
-        self.piezo_plot_keep_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.piezo_plot_keep_checkbutton_vars = [self.piezo_plot_keep_checkbutton_var_top, self.piezo_plot_keep_checkbutton_var_bottom]
+        self.piezo_keep_plot_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.piezo_keep_plot_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.piezo_keep_plot_checkbutton_vars = [self.piezo_keep_plot_checkbutton_var_top, self.piezo_keep_plot_checkbutton_var_bottom]
         self.dytran_plot_t0_checkbutton_var = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_top = tk.BooleanVar(value=False)
         self.load_fastDAQ_piezo_checkbutton_var_bottom = tk.BooleanVar(value=False)
@@ -180,6 +180,14 @@ class Application(tk.Frame):
         self.piezo_timerange_checkbutton_var_bottom = tk.BooleanVar(value=False)
         self.piezo_timerange_checkbutton_vars = [self.piezo_timerange_checkbutton_var_top,
                                                  self.piezo_timerange_checkbutton_var_bottom]
+        # For slowDAQ tab
+        self.load_slowDAQ_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.load_slowDAQ_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.load_slowDAQ_checkbutton_vars = [self.load_slowDAQ_checkbutton_var_top, self.load_slowDAQ_checkbutton_var_bottom]
+        self.slowDAQ_keep_plot_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.slowDAQ_keep_plot_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.slowDAQ_keep_plot_checkbutton_vars = [self.slowDAQ_keep_plot_checkbutton_var_top, self.slowDAQ_keep_plot_checkbutton_var_bottom]
+        
         # For config window
         self.coupp_checkbutton_var = tk.BooleanVar(value=False)
         self.run = None
@@ -300,6 +308,9 @@ class Application(tk.Frame):
         self.load_fastDAQ_piezo(0)
         self.load_fastDAQ_piezo(1)
         self.load_PMT_traces()
+        if np.any(self.load_slowDAQ_checkbutton_vars):
+            self.load_slowDAQ(0)
+            self.load_slowDAQ(1)
         self.frame = self.init_frame
         self.diff_checkbutton_var.set(False)
         self.invert_checkbutton_var.set(False)
@@ -654,9 +665,9 @@ class Application(tk.Frame):
             logger.error('Raw events not found for this dataset. Please ensure that the raw_events.npy file is present')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_plot_keep_checkbutton_vars[0].get():
+            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_keep_plot_checkbutton_vars[0].get():
                 self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_plot_keep_checkbutton_vars[1].get():
+            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_keep_plot_checkbutton_vars[1].get():
                 self.load_fastDAQ_piezo(1)
 
     # Method for changing data directories
@@ -696,9 +707,9 @@ class Application(tk.Frame):
                 'exist in their respective directories')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_plot_keep_checkbutton_vars[0].get():
+            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_keep_plot_checkbutton_vars[0].get():
                 self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_plot_keep_checkbutton_vars[1].get():
+            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_keep_plot_checkbutton_vars[1].get():
                 self.load_fastDAQ_piezo(1)
 
     # for when manual config path is updated
@@ -937,7 +948,7 @@ class Application(tk.Frame):
         else: 
             for widget in self.piezo_checkbuttons[index]: 
                 widget.configure(state=tk.DISABLED)
-        if not self.piezo_plot_keep_checkbutton_vars[index].get(): 
+        if not self.piezo_keep_plot_checkbutton_vars[index].get(): 
             self.draw_fastDAQ_piezo(index)
         return
 
@@ -1120,7 +1131,6 @@ class Application(tk.Frame):
         self.increment_PMT_trigger(-1)
         return
 
-
     def jump_to_t0_trigger(self):
         # Scan through all the times and jump to the PMT trigger closest to t=0
         if not self.draw_pmt_traces_var.get():
@@ -1140,7 +1150,6 @@ class Application(tk.Frame):
             self.increment_PMT_trigger(min_index-self.n_PMT_trig.get())
         return
 
-
     @staticmethod
     def disable_widgets(widget_list):
         for widget in widget_list:
@@ -1152,7 +1161,7 @@ class Application(tk.Frame):
         for widget in widget_list:
             widget["state"] = tk.NORMAL
         return
-
+    
     def load_PMT_traces(self):
         self.destroy_children(self.pmt_graph_frame)
         if not self.draw_pmt_traces_var.get():
@@ -1227,6 +1236,99 @@ class Application(tk.Frame):
         # "seconds" component, and the 2nd element being the "fractional" component.
         return (trace_t0[0] - align_t0[0]) + (trace_t0[1] - align_t0[1])
 
+    def load_slowDAQ(self, index):
+        '''
+        Load slowDAQ information.
+        '''
+        if not self.load_slowDAQ_checkbutton_vars[index].get():
+            self.destroy_children(self.slow_tab_rights[index])
+        path = os.path.join(self.raw_directory, self.run)
+        self.slowDAQ_event = GetEvent(path, self.event, "slowDAQ")
+        self.refresh_slowDAQ_choices()
+        if self.load_slowDAQ_checkbutton_vars[index].get():
+            for widget in self.slowDAQ_checkbuttons[index]: 
+                widget.configure(state=tk.NORMAL)
+        else: 
+            for widget in self.slowDAQ_checkbuttons[index]: 
+                widget.configure(state=tk.DISABLED)
+        if not self.slowDAQ_keep_plot_checkbutton_vars[index].get(): 
+            self.draw_slowDAQ(index)
+        return
+    
+    def refresh_slowDAQ_choices(self):
+        if not self.slowDAQ_event["slowDAQ"]["loaded"]:
+            return
+        new_choices = list(self.slowDAQ_event["slowDAQ"].keys())
+        exclude = ['run', 'ev', 'loaded', 'elapsed_time']
+        choices = [choice for choice in new_choices if choice not in exclude]
+        self.add_slow_var_comboboxes[0]['values'] = sorted(choices)
+        self.add_slow_var_comboboxes[1]['values'] = sorted(choices)
+#        for n in range(len(choices)):
+#            self.slowDAQ_checkbox_vars[0].append(tk.BooleanVar(master=self.slowDAQ_checkbutton_frames[0], value=0))
+#            self.slowDAQ_checkbuttons[0].append(tk.Checkbutton(master=self.slowDAQ_checkbutton_frames[0], text=choices[n], variable=self.slowDAQ_checkbox_vars[0][-1], command = lambda:self.draw_slowDAQ(0), state = tk.NORMAL if self.load_slowDAQ_checkbutton_vars[0].get() else tk.DISABLED))
+#            self.slowDAQ_checkbuttons[0][-1].grid(row=n, column=0, sticky=tk.N)
+#            
+#            self.slowDAQ_checkbox_vars[1].append(tk.BooleanVar(master=self.slowDAQ_checkbutton_frames[1], value=0))
+#            self.slowDAQ_checkbuttons[1].append(tk.Checkbutton(master=self.slowDAQ_checkbutton_frames[1], text=choices[n], variable=self.slowDAQ_checkbox_vars[1][-1], command = lambda:self.draw_slowDAQ(1), state = tk.DISABLED))
+#            self.slowDAQ_checkbuttons[1][-1].grid(row=n, column=0, sticky=tk.N)
+        return
+    
+    def add_slow_var(self, var, index):
+        if var in [label['text'] for label in self.slow_vars[index]]:
+            return
+        if var not in self.add_slow_var_comboboxes[index]['values']:
+            return
+        label = tk.Label(self.slow_var_frames[index], text=var)
+        label.grid(row=len(self.slow_vars[index]), sticky='WE')
+        self.slow_vars[index].append(label)
+        self.draw_slowDAQ(index)
+    
+    def remove_slow_var(self, index):
+        if not self.slow_vars[index]:
+            return
+        else:
+            self.slow_vars[index].pop().grid_forget()
+        self.draw_slowDAQ(index)
+        return
+    
+    def draw_slowDAQ(self, index):
+        if not self.load_slowDAQ_checkbutton_vars[index].get():
+            return
+        if int(self.run_type) == 10:
+            self.error += "Not allowed to view slowDAQ data for run_type=10\n"
+        self.destroy_children(self.slow_tab_rights[index])
+        self.draw_slowDAQ_traces(index)
+        return
+    
+    def draw_slowDAQ_traces(self, index):
+        if self.slow_ax[index] is not None:
+            for line in self.slow_ax[index].lines[:]:
+                line.remove()
+        trig_ind = np.where(self.slowDAQ_event['slowDAQ']["TriggerLatch"]==0)[0][-1]
+        time_offset = self.slowDAQ_event['slowDAQ']["elapsed_time"][trig_ind]
+        slow_time = self.slowDAQ_event['slowDAQ']["elapsed_time"] - time_offset
+        for label in self.slow_vars[index]:
+            var = label['text']
+            value = self.slowDAQ_event['slowDAQ'][var]
+            if self.slow_fig[index] is None:
+                self.slow_fig[index], self.slow_ax[index] = plt.subplots(figsize=(8, 3), dpi=100)
+            self.slow_ax[index].set_title(var)
+            self.slow_ax[index].set_xlabel("[s]")
+            self.slow_ax[index].set_ylabel("Amplitude [get units later]")
+            self.slow_ax[index].set_xlim(slow_time[0], slow_time[-1])
+            var_list = np.array([label['text'] for label in self.slow_vars[index]])
+            var_pos = np.where(var_list==var)[0][0]
+            plot_color = self.slowDAQ_colors[var_pos%len(self.slowDAQ_colors)]
+            self.slow_ax[index].plot(slow_time, value, color=plot_color, label=var)
+            if max(value)!=min(value): 
+                self.slow_ax[index].set_ylim([min(value), max(value)])
+            temp_legend=[]                
+            temp_sticky = tk.NW if index == 0 else tk.SW
+            self.place_graph_and_toolbar(figure=self.slow_fig[index], master=self.slow_tab_rights[index], sticky=temp_sticky)
+        # MAKE THE LEGEND
+        if self.slow_ax[index] is not None:
+            self.slow_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
+        return
 
     @staticmethod
     def place_graph_and_toolbar(figure, master, sticky=tk.NW):
@@ -1351,12 +1453,14 @@ class Application(tk.Frame):
         self.camera_tab = tk.Frame(self.notebook)
         self.piezo_tab = tk.Frame(self.notebook)
         self.PMT_tab = tk.Frame(self.notebook)
+        self.slow_tab = tk.Frame(self.notebook)
         self.config_tab = tk.Frame(self.notebook)
 
         self.notebook.add(self.camera_tab, text='camera')
         self.notebook.add(self.piezo_tab, text='piezo')
-        self.notebook.add(self.PMT_tab, text="PMT")
-        self.notebook.add(self.config_tab, text='Configuration')
+        self.notebook.add(self.PMT_tab, text='PMT')
+        self.notebook.add(self.slow_tab, text='slow')
+        self.notebook.add(self.config_tab, text='configuration')
         self.notebook.grid(row=0, column=0, columnspan=5)
 
         # Setup frames to be used on the top (in tabs)
@@ -1372,6 +1476,7 @@ class Application(tk.Frame):
             canvas.grid(row=0, column=1 * cam, columnspan=1, sticky='NW')
             canvas.cam = cam
             self.canvases.append(canvas)
+        
         # Piezos tab
         # First setup frames for piezos tab
         self.piezo_tab_left = tk.Frame(self.piezo_tab, bd=5, relief=tk.SUNKEN)
@@ -1417,7 +1522,6 @@ class Application(tk.Frame):
         self.piezo_label_bottom.grid(row=1, column=0, sticky='WE')
         self.piezo_labels = [self.piezo_label_top,
                              self.piezo_label_bottom]
-
 
         self.piezo_checkbutton_frame_top = tk.Frame(master=self.piezo_tab_left_top)
         self.piezo_checkbutton_frame_top.grid(row=1, column=1, sticky=tk.N)
@@ -1550,20 +1654,20 @@ class Application(tk.Frame):
                                            self.piezo_plot_t0_checkbutton_bottom]
         
         # keep checkbutton
-        self.piezo_plot_keep_checkbutton_top = tk.Checkbutton(
+        self.piezo_keep_plot_checkbutton_top = tk.Checkbutton(
             self.piezo_tab_left_top,
             text='Keep',
-            variable=self.piezo_plot_keep_checkbutton_var_top,
+            variable=self.piezo_keep_plot_checkbutton_var_top,
             command=lambda: self.draw_fastDAQ_piezo(0))
-        self.piezo_plot_keep_checkbutton_top.grid(row=8, column=0, sticky='WE')
-        self.piezo_plot_keep_checkbutton_bottom = tk.Checkbutton(
+        self.piezo_keep_plot_checkbutton_top.grid(row=8, column=0, sticky='WE')
+        self.piezo_keep_plot_checkbutton_bottom = tk.Checkbutton(
             self.piezo_tab_left_bottom,
             text='Keep',
-            variable=self.piezo_plot_keep_checkbutton_var_bottom,
+            variable=self.piezo_keep_plot_checkbutton_var_bottom,
             command=lambda: self.draw_fastDAQ_piezo(1))
-        self.piezo_plot_keep_checkbutton_bottom.grid(row=8, column=0, sticky='WE')
-        self.piezo_plot_keep_checkbuttons = [self.piezo_plot_keep_checkbutton_top,
-                                           self.piezo_plot_keep_checkbutton_bottom]
+        self.piezo_keep_plot_checkbutton_bottom.grid(row=8, column=0, sticky='WE')
+        self.piezo_keep_plot_checkbuttons = [self.piezo_keep_plot_checkbutton_top,
+                                           self.piezo_keep_plot_checkbutton_bottom]
         # reload button
         self.reload_fastDAQ_piezo_button_top = tk.Button(self.piezo_tab_left_top, text='reload',
                                                      command=lambda: self.draw_fastDAQ_piezo(0))
@@ -1585,7 +1689,104 @@ class Application(tk.Frame):
                                                           variable = self.draw_pmt_traces_var,
                                                           command = self.load_PMT_traces)
         self.draw_pmt_traces_checkbutton.grid(row=0, column=0, sticky=tk.N)
-
+        
+        # slow tab
+        self.slow_tab_left = tk.Frame(self.slow_tab, bd=5, relief=tk.SUNKEN)
+        self.slow_tab_left.grid(row=0, column=0, sticky='NW')
+        
+        self.slow_tab_left_top = tk.Frame(self.slow_tab_left, bd=2, relief=tk.SUNKEN)
+        self.slow_tab_left_top.grid(row=0, column=0, sticky=tk.N)
+        self.slow_tab_left_bottom = tk.Frame(self.slow_tab_left, bd=2, relief=tk.SUNKEN)
+        self.slow_tab_left_bottom.grid(row=1, column=0, sticky=tk.N, pady=(140, 0))
+        
+        self.slow_tab_right = tk.Frame(self.slow_tab, bd=5, relief=tk.SUNKEN)
+        self.slow_tab_right.grid(row=0, column=1, sticky='NW')
+        
+        self.slow_tab_right_top = tk.Frame(self.slow_tab_right, bd=2, relief=tk.SUNKEN)
+        self.slow_tab_right_top.grid(row=0, column=0, sticky=tk.N)
+        self.slow_tab_right_bottom = tk.Frame(self.slow_tab_right, bd=2, relief=tk.SUNKEN)
+        self.slow_tab_right_bottom.grid(row=1, column=0, sticky=tk.S)
+        self.slow_tab_rights = [self.slow_tab_right_top,
+                                 self.slow_tab_right_bottom]
+        
+        # frame that fits all added items
+        self.slow_var_frame_top = tk.Frame(master=self.slow_tab_left_top)
+        self.slow_var_frame_top.grid(row=2, column=0, columnspan=2, sticky='WE', pady=5)
+        self.slow_var_frame_bot = tk.Frame(master=self.slow_tab_left_bottom)
+        self.slow_var_frame_bot.grid(row=2, column=0, columnspan=2, sticky='WE', pady=5)
+        self.slow_var_frames = [self.slow_var_frame_top, self.slow_var_frame_bot]
+        
+        self.slow_ax = [None, None]
+        self.slow_line = [None, None]
+        self.slow_fig = [None, None]
+        
+        self.load_slowDAQ_checkbutton_top = tk.Checkbutton(
+            self.slow_tab_left_top,
+            text='Load slowDAQ',
+            variable=self.load_slowDAQ_checkbutton_var_top,
+            command=lambda: self.load_slowDAQ(0))
+        self.load_slowDAQ_checkbutton_top.grid(row=0, column=0, sticky='WE')
+        self.load_slowDAQ_checkbutton_bottom = tk.Checkbutton(
+            self.slow_tab_left_bottom,
+            text='Load slowDAQ',
+            variable=self.load_slowDAQ_checkbutton_var_bottom,
+            command=lambda: self.load_slowDAQ(1))
+        self.load_slowDAQ_checkbutton_bottom.grid(row=0, column=0, sticky='WE')
+        
+        self.slowDAQ_checkbox_vars_top = []
+        self.slowDAQ_checkbox_vars_bot = []
+        self.slowDAQ_checkbuttons_top = []
+        self.slowDAQ_checkbuttons_bot = []
+        self.slowDAQ_colors = ['b','g','c','k','y','m']
+        self.slowDAQ_checkbox_vars = [self.slowDAQ_checkbox_vars_top, self.slowDAQ_checkbox_vars_bot]
+        self.slowDAQ_checkbuttons = [self.slowDAQ_checkbuttons_top, self.slowDAQ_checkbuttons_bot]
+        
+        self.slow_vars = [[],[]]
+        
+        # add slow var combobox
+        self.add_slow_var_combobox_top = ttk.Combobox(self.slow_tab_left_top)
+        self.add_slow_var_combobox_top.grid(row=1, column=0, sticky='WE')
+        self.add_slow_var_combobox_bottom = ttk.Combobox(self.slow_tab_left_bottom)
+        self.add_slow_var_combobox_bottom.grid(row=1, column=0, sticky='WE')
+        self.add_slow_var_comboboxes = [self.add_slow_var_combobox_top, self.add_slow_var_combobox_bottom]
+        
+        # add slow var button
+        self.add_slow_var_button_top = tk.Button(self.slow_tab_left_top, text='add', command=lambda: self.add_slow_var(self.add_slow_var_comboboxes[0].get(), 0))
+        self.add_slow_var_button_top.grid(row=1, column=1, sticky='WE')
+        self.add_slow_var_button_bottom = tk.Button(self.slow_tab_left_bottom, text='add', command=lambda: self.add_slow_var(self.add_slow_var_comboboxes[1].get(), 1))
+        self.add_slow_var_button_bottom.grid(row=1, column=1, sticky='WE')
+        
+        # remove slow var button
+        self.remove_slow_var_button_top = tk.Button(self.slow_tab_left_top, text='del', command=lambda: self.remove_slow_var(0))
+        self.remove_slow_var_button_top.grid(row=0, column=1, sticky='WE')
+        self.remove_slow_var_button_bottom = tk.Button(self.slow_tab_left_bottom, text='del', command=lambda: self.remove_slow_var(1))
+        self.remove_slow_var_button_bottom.grid(row=0, column=1, sticky='WE')
+        
+        # keep button
+        self.slowDAQ_keep_plot_checkbutton_top = tk.Checkbutton(
+            self.slow_tab_left_top,
+            text='Keep',
+            variable=self.slowDAQ_keep_plot_checkbutton_var_top,
+            command=lambda: self.draw_fastDAQ_piezo(0))
+        self.slowDAQ_keep_plot_checkbutton_top.grid(row=3, column=0, sticky='WE')
+        self.slowDAQ_keep_plot_checkbutton_bottom = tk.Checkbutton(
+            self.slow_tab_left_bottom,
+            text='Keep',
+            variable=self.slowDAQ_keep_plot_checkbutton_var_bottom,
+            command=lambda: self.draw_fastDAQ_piezo(1))
+        self.slowDAQ_keep_plot_checkbutton_bottom.grid(row=3, column=0, sticky='WE')
+        self.slowDAQ_keep_plot_checkbuttons = [self.slowDAQ_keep_plot_checkbutton_top,
+                                           self.slowDAQ_keep_plot_checkbutton_bottom]
+        
+        # reload button
+        self.reload_slowDAQ_button_top = tk.Button(self.slow_tab_left_top, text='reload',
+                                                     command=lambda: self.draw_slowDAQ(0))
+        self.reload_slowDAQ_button_top.grid(row=3, column=1, sticky=tk.N)
+        self.reload_slowDAQ_button_bottom = tk.Button(self.slow_tab_left_bottom, text='reload',
+                                                     command=lambda: self.draw_slowDAQ(1))
+        self.reload_slowDAQ_button_bottom.grid(row=3, column=1, sticky=tk.N)
+        self.reload_slowDAQ_buttons = [self.reload_slowDAQ_button_top, self.reload_slowDAQ_button_bottom]
+        
         # configuration tab
         # setup frames within tab
         self.config_tab_main = tk.Frame(self.config_tab, bd=5, relief=tk.SUNKEN)
