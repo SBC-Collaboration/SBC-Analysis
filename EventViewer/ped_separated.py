@@ -20,7 +20,11 @@ from SBCcode.DataHandling.GetSBCEvent import GetEvent
 from SBCcode.DataHandling import ReadBinary
 import re
 
-import ped_camera_tab  
+import ped_camera_tab
+import ped_piezo_tab
+import ped_pmt_tab
+import ped_slow_tab
+import ped_config_tab
 
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout': True})
@@ -63,15 +67,23 @@ class Application(tk.Frame):
         self.npy_directory = os.getcwd()
         self.config_file_directory = os.path.join(self.ped_directory, 'configs')
         
-        self.num_cams = 2
-        
+        # load tabs from files
         self.notebook = ttk.Notebook(master)
         self.camera_tab = ped_camera_tab.CameraTab(self)
+        self.piezo_tab =  ped_piezo_tab.PiezoTab(self)
+        self.pmt_tab = ped_pmt_tab.PMTTab(self)
+        self.slow_tab = ped_slow_tab.SlowTab(self)
+        self.config_tab = ped_config_tab.ConfigTab(self)
         
+        # add tabs to notebook
         self.notebook.add(self.camera_tab, text='camera')
-        self.notebook.grid(row=0, column=0, columnspan=5)
+        self.notebook.add(self.piezo_tab, text='piezo')
+        self.notebook.add(self.pmt_tab, text='PMT')
+        self.notebook.add(self.slow_tab, text='slow')
+        self.notebook.add(self.config_tab, text='configuration')
+        self.notebook.grid(row=0, column=0, columnspan=5, sticky='WE')
         
-        self.camera_tab.create_widgets()
+        # self.camera_tab.create_widgets()
 
 ROOT = tk.Tk()
 ROOT.lift()

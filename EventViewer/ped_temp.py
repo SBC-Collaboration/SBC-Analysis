@@ -77,47 +77,6 @@ class Application(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
         self.grid()
-        self.init_image_width = 400
-        self.init_image_height = 625
-        self.native_image_width = None
-        self.native_image_height = None
-        self.max_zoom = 3
-
-        # raw_directory: where the data for an individual dataset is stored
-        # base_directory: where the datasets are stored, created from raw_directory
-        # scan_directory: where the handscans are stored
-        # reco_directory: where the .npy files (raw_events.npy, reco_events.npy) and merged_all.txt
-        # ped_directory: where the ped code is stored on the machine
-        # config_file_directory: where the configuration files are placed, should be a folder in the same directory as ped_directory
-        ### also change self.ped_config_file_path_var to append desired initial dataset rather than default
-
-        # # for running on COUPP machine
-        # self.raw_directory = '/bluearc/storage/30l-16-data/'
-        # self.base_directory, end = re.compile('\\w*-\\w*-data').split(self.raw_directory)
-        # self.scan_directory = '/coupp/data/home/coupp/scan_output_30l-16/'
-        # self.reco_directory = '/coupp/data/home/coupp/recon/current/30l-16/output/'
-        # self.ped_directory = '/coupp/data/home/coupp/PEDsvn/'
-        # self.config_file_directory = os.path.join(self.ped_directory, 'configs')
-
-        ###for running on local machine, change these based on local file location to set the correct data directories and initial dataset
-        self.raw_directory = '/bluearc/storage/SBC-17-data/'
-        self.base_directory, end = re.compile('\\w*-\\w*-data').split(self.raw_directory)
-        self.scan_directory = '/coupp/data/home/coupp/scan_output_SBC-17/'
-        self.reco_directory = '/pnfs/coupp/persistent/grid_output/SBC-17/output/'
-        #self.reco_directory = '/coupp/data/home/coupp/recon/current/30l-16/output/'
-
-        self.ped_directory = os.getcwd()
-        self.npy_directory = os.getcwd()
-
-        self.config_file_directory = os.path.join(self.ped_directory, 'configs')
-
-        # #  for running on local machine, change these based on local file location to set the correct data directories and initial dataset
-        # self.raw_directory = './30l-16-data'
-        # self.base_directory, end = re.compile('\\w*-\\w*-data').split(self.raw_directory)
-        # self.scan_directory = './scan_output_30l-16'
-        # self.reco_directory = './30l-16-data/output'
-        # self.ped_directory = "./"
-        # self.config_file_directory = './configs'
 
         # Errors will be appended to this string and displayed for each event
         self.error = ''
@@ -409,7 +368,7 @@ class Application(tk.Frame):
         display_var = self.reco_row[var]
         labels = ['PMTmatch_iPMThit', 'PMTmatch_lag', 'PMTmatch_pulse_tpeak', 'PMTmatch_nclusters', 'PMTmatch_ix', 'PMTmatch_npeaks', 'PMTmatch_nphe', 'PMTmatch_baserms', 'PMTmatch_t0', 'CAMstate', 't_nearestVetohit', 'PMTmatch_pulse_t90', 't_nearestPMThit', 'PMTmatch_sat', 'PMTmatch_baseline', 'PMTmatch_coinc', 'PMTmatch_pulse_tstart', 'PMTmatch_pulse_tend', 'PMTmatch_pulse_t10', 'PMTmatch_pulse_height', 'PMTmatch_pulse_area', 'PMTmatch_maxpeak', 'PumpActiveTime', 'PumpActiveCycle', 'led_tau', 'bubble_t0', 'peak_t0']
         if var in labels: display_var = display_var[0]
-        if type(display_var)==np.float64: text.set('{:.4f}'.format(display_var))
+        if type(display_var)==np.float64: text.set('{:.3f}'.format(display_var))
         else: text.set(display_var)
     
     def add_display_var(self, var):
@@ -1842,131 +1801,6 @@ class Application(tk.Frame):
         self.slowDAQ_sync_xlim_button_bottom.grid(row=3, column=1, sticky=tk.N)
         self.slowDAQ_sync_xlim_buttons = [self.slowDAQ_sync_xlim_button_top, self.slowDAQ_sync_xlim_button_bottom]
         
-        # configuration tab
-        # setup frames within tab
-        self.config_tab_main = tk.Frame(self.config_tab, bd=5, relief=tk.SUNKEN)
-        self.config_tab_main.grid(row=0, column=0, sticky='NW')
-
-        self.config_tab_vars = tk.Frame(self.config_tab, bd=5, relief=tk.SUNKEN)
-        self.config_tab_vars.grid(row=4, column=0, sticky='NW')
-
-        # frame 1
-        self.dataset_label = tk.Label(self.config_tab_main, text='Dataset:')
-        self.dataset_label.grid(row=0, column=0, sticky='WE')
-        self.dataset_select = ttk.Combobox(self.config_tab_main, values=self.get_datasets())
-        self.dataset_select.grid(row=0, column=1, sticky='WE')
-        self.set_init_dataset()
-
-        self.update_dataset_button = tk.Button(self.config_tab_main, text='Update Dataset', command=self.update_dataset)
-        self.update_dataset_button.grid(row=0, column=2, sticky='NW')
-
-        self.raw_directory_label = tk.Label(self.config_tab_main, text='Raw Directory:')
-        self.raw_directory_label.grid(row=1, column=0, sticky='WE')
-        self.raw_directory_entry = tk.Entry(self.config_tab_main, width=50)
-        self.raw_directory_entry.insert(0, self.raw_directory)
-        self.raw_directory_entry.grid(row=1, column=1, sticky='WE')
-
-        self.scan_directory_label = tk.Label(self.config_tab_main, text='Scan Directory:')
-        self.scan_directory_label.grid(row=2, column=0, sticky='WE')
-        self.scan_directory_entry = tk.Entry(self.config_tab_main, width=12)
-        self.scan_directory_entry.insert(0, self.scan_directory)
-        self.scan_directory_entry.grid(row=2, column=1, sticky='WE')
-
-        self.reco_directory_label = tk.Label(self.config_tab_main, text='Reco Directory:')
-        self.reco_directory_label.grid(row=3, column=0, sticky='WE')
-        self.reco_directory_entry = tk.Entry(self.config_tab_main, width=12)
-        self.reco_directory_entry.insert(0, self.reco_directory)
-        self.reco_directory_entry.grid(row=3, column=1, sticky='WE')
-
-        self.reco_version_label = tk.Label(self.config_tab_main, text='Reco Version:')
-        self.reco_version_label.grid(row=4, column=0, sticky='WE')
-        self.reco_version_combobox = ttk.Combobox(self.config_tab_main, values=['current', 'devel'])
-        self.reco_version_combobox.grid(row=4, column=1, sticky='WE')
-
-        self.npy_directory_label = tk.Label(self.config_tab_main, text='NPY Directory:')
-        self.npy_directory_label.grid(row=5, column=0, sticky='WE')
-        self.npy_directory_entry = tk.Entry(self.config_tab_main, width=12)
-        self.npy_directory_entry.insert(0, self.npy_directory)
-        self.npy_directory_entry.grid(row=5, column=1, sticky='WE')
-
-        self.update_directory_button = tk.Button(self.config_tab_main, text='Update Directories',
-                                                 command=self.update_directories)
-        self.update_directory_button.grid(row=1, column=2, sticky='WE')
-        
-        # add quit button
-        self.quit_button = tk.Button(self.config_tab_main, text='Quit PED', command=ROOT.destroy)
-        self.quit_button.grid(row=2, column=2, sticky='WE')
-        
-        # frame 2
-        self.manual_ped_config_directory_label = tk.Label(self.config_tab_vars, text='Manual Path to ped_config.txt')
-        self.manual_ped_config_directory_label.grid(row=0, column=0, sticky='WE')
-        self.manual_ped_config_directory = tk.Entry(self.config_tab_vars, width=70)
-        self.manual_ped_config_directory.grid(row=0, column=1, sticky='NW')
-
-        self.update_vars_config_button = tk.Button(self.config_tab_vars, text='Update Config Directory',
-                                                   command=self.new_config_update)
-        self.update_vars_config_button.grid(row=0, column=2, sticky='NW')
-
-        self.update_vars_config_button = tk.Button(self.config_tab_vars, text='Update Config Values',
-                                                   command=self.update_vars_config)
-        self.update_vars_config_button.grid(row=10, column=2, sticky='NW')
-
-        self.ped_config_file_path = tk.Label(self.config_tab_vars, text='Path to ped_config.txt file:')
-        self.ped_config_file_path.grid(row=1, column=0, sticky='WE')
-        self.ped_config_file_path_combobox = ttk.Combobox(self.config_tab_vars, width=60)
-        self.ped_config_file_path_combobox.grid(row=1, column=1, sticky='WE')
-
-        self.update_config_combobox_button = tk.Button(self.config_tab_vars, text='Update Config File',
-                                                       command=self.config_combobox_update)
-        self.update_config_combobox_button.grid(row=1, column=2, sticky='NW')
-
-        self.plc_temp_config_label = tk.Label(self.config_tab_vars, text='PLC temperature var:')
-        self.plc_temp_config_label.grid(row=2, column=0, sticky='WE')
-        self.plc_temp_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.plc_temp_config_entry.insert(0, self.plc_temp_var)
-        self.plc_temp_config_entry.grid(row=2, column=1, sticky='WE')
-
-        self.relative_path_to_images_config_label = tk.Label(self.config_tab_vars, text='Relative path to images:')
-        self.relative_path_to_images_config_label.grid(row=3, column=0, sticky='WE')
-        self.relative_path_to_images_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.relative_path_to_images_config_entry.insert(0, self.images_relative_path)
-        self.relative_path_to_images_config_entry.grid(row=3, column=1, sticky='WE')
-
-        self.image_naming_convention_label = tk.Label(self.config_tab_vars, text='Image naming convention:')
-        self.image_naming_convention_label.grid(row=4, column=0, sticky='WE')
-        self.image_naming_convention_select = ttk.Combobox(self.config_tab_vars, values=self.image_naming_conventions)
-        self.image_naming_convention_select.insert(0, self.image_naming_convention)
-        self.image_naming_convention_select.grid(row=4, column=1, sticky='WE')
-
-        self.num_cams_config_label = tk.Label(self.config_tab_vars, text='Number of cameras:')
-        self.num_cams_config_label.grid(row=5, column=0, sticky='WE')
-        self.num_cams_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.num_cams_config_entry.insert(0, self.num_cams)
-        self.num_cams_config_entry.grid(row=5, column=1, sticky='WE')
-
-        self.image_orientation_config_label = tk.Label(self.config_tab_vars, text='Image orientation:')
-        self.image_orientation_config_label.grid(row=6, column=0, sticky='WE')
-        self.image_orientation_select = ttk.Combobox(self.config_tab_vars, values=self.image_orientations)
-        self.image_orientation_select.insert(0, self.image_orientation)
-        self.image_orientation_select.grid(row=6, column=1, sticky='WE')
-
-        self.first_frame_config_label = tk.Label(self.config_tab_vars, text='first frame:')
-        self.first_frame_config_label.grid(row=7, column=0, sticky='WE')
-        self.first_frame_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.first_frame_config_entry.insert(0, self.first_frame)
-        self.first_frame_config_entry.grid(row=7, column=1, sticky='WE')
-
-        self.init_frame_config_label = tk.Label(self.config_tab_vars, text='trig frame:')
-        self.init_frame_config_label.grid(row=8, column=0, sticky='WE')
-        self.init_frame_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.init_frame_config_entry.insert(0, self.init_frame)
-        self.init_frame_config_entry.grid(row=8, column=1, sticky='WE')
-
-        self.last_frame_config_label = tk.Label(self.config_tab_vars, text='last frame:')
-        self.last_frame_config_label.grid(row=9, column=0, sticky='WE')
-        self.last_frame_config_entry = tk.Entry(self.config_tab_vars, width=30)
-        self.last_frame_config_entry.insert(0, self.last_frame)
-        self.last_frame_config_entry.grid(row=9, column=1, sticky='WE')
 
         # Setup frames to be used on the bottom
         self.bottom_frame_1 = tk.Frame(self, bd=5, relief=tk.SUNKEN)
