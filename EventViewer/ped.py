@@ -147,17 +147,17 @@ class Application(tk.Frame):
         self.diff_checkbutton_var = tk.BooleanVar(value=False)
         self.antialias_checkbutton_var = tk.BooleanVar(value=True)
         self.load_dytran_checkbutton_var = tk.BooleanVar(value=False)
-        self.piezo_plot_t0_checkbutton_var_top = tk.BooleanVar(value=False)
-        self.piezo_plot_t0_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.piezo_plot_t0_checkbutton_vars = [self.piezo_plot_t0_checkbutton_var_top,
-                                               self.piezo_plot_t0_checkbutton_var_bottom]
-        self.piezo_keep_plot_checkbutton_var_top = tk.BooleanVar(value=False)
-        self.piezo_keep_plot_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.piezo_keep_plot_checkbutton_vars = [self.piezo_keep_plot_checkbutton_var_top, self.piezo_keep_plot_checkbutton_var_bottom]
+        self.fastDAQ_plot_t0_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.fastDAQ_plot_t0_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.fastDAQ_plot_t0_checkbutton_vars = [self.fastDAQ_plot_t0_checkbutton_var_top,
+                                               self.fastDAQ_plot_t0_checkbutton_var_bottom]
+        self.fast_keep_plot_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.fast_keep_plot_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.fast_keep_plot_checkbutton_vars = [self.fast_keep_plot_checkbutton_var_top, self.fast_keep_plot_checkbutton_var_bottom]
         self.dytran_plot_t0_checkbutton_var = tk.BooleanVar(value=False)
-        self.load_fastDAQ_piezo_checkbutton_var_top = tk.BooleanVar(value=False)
-        self.load_fastDAQ_piezo_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.load_fastDAQ_piezo_checkbutton_vars = [self.load_fastDAQ_piezo_checkbutton_var_top, self.load_fastDAQ_piezo_checkbutton_var_bottom]
+        self.load_fastDAQ_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.load_fastDAQ_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.load_fastDAQ_checkbutton_vars = [self.load_fastDAQ_checkbutton_var_top, self.load_fastDAQ_checkbutton_var_bottom]
         self.isgoodtrigger_checkbutton_var = tk.BooleanVar(value=True)
         self.crosshairsgood_checkbutton_var = tk.BooleanVar(value=True)
         for i in range(9):
@@ -171,15 +171,15 @@ class Application(tk.Frame):
         self.pset_label = tk.StringVar()
         self.te_label = tk.StringVar()
         # For the fastDAQ tab
-        self.piezo_cutoff_low = 2000
-        self.piezo_cutoff_high = 10000
+        self.fastDAQ_cutoff_low = 2000
+        self.fastDAQ_cutoff_high = 10000
         self.piezo_beginning_time = -.1
         self.piezo_ending_time = 0.0
         self.incremented_piezo_event = False
-        self.piezo_timerange_checkbutton_var_top = tk.BooleanVar(value=False)
-        self.piezo_timerange_checkbutton_var_bottom = tk.BooleanVar(value=False)
-        self.piezo_timerange_checkbutton_vars = [self.piezo_timerange_checkbutton_var_top,
-                                                 self.piezo_timerange_checkbutton_var_bottom]
+        self.fastDAQ_timerange_checkbutton_var_top = tk.BooleanVar(value=False)
+        self.fastDAQ_timerange_checkbutton_var_bottom = tk.BooleanVar(value=False)
+        self.fastDAQ_timerange_checkbutton_vars = [self.fastDAQ_timerange_checkbutton_var_top,
+                                                 self.fastDAQ_timerange_checkbutton_var_bottom]
         # For slowDAQ tab
         self.load_slowDAQ_checkbutton_var_top = tk.BooleanVar(value=False)
         self.load_slowDAQ_checkbutton_var_bottom = tk.BooleanVar(value=False)
@@ -305,8 +305,8 @@ class Application(tk.Frame):
     def reset_images(self):
         self.load_event_text()
         self.load_plc_text()
-        self.load_fastDAQ_piezo(0)
-        self.load_fastDAQ_piezo(1)
+        self.load_fastDAQ(0)
+        self.load_fastDAQ(1)
         self.load_PMT_traces()
         if np.any(self.load_slowDAQ_checkbutton_vars):
             self.load_slowDAQ(0)
@@ -316,7 +316,7 @@ class Application(tk.Frame):
         self.invert_checkbutton_var.set(False)
         for canvas in self.canvases:
             self.reset_zoom(canvas)
-        #self.draw_fastDAQ_piezo_PMT_time()
+        #self.draw_fastDAQ_PMT_time()
         self.update_images()
 
     def get_image_path(self, cam, frame):
@@ -505,7 +505,7 @@ class Application(tk.Frame):
             #self.selected_events = self.selected_events[unique_rows]  # get rid of multiple nbub entries
             if len(self.selected_events) == 0:
                 logger.error('no events pass cuts')
-                self.reset_cuts()
+                # self.reset_cuts()
                 return
             row = self.get_row(self.raw_events)
             try:
@@ -665,10 +665,10 @@ class Application(tk.Frame):
             logger.error('Raw events not found for this dataset. Please ensure that the raw_events.npy file is present')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_keep_plot_checkbutton_vars[0].get():
-                self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_keep_plot_checkbutton_vars[1].get():
-                self.load_fastDAQ_piezo(1)
+            if self.load_fastDAQ_checkbutton_vars[0].get() and not self.fast_keep_plot_checkbutton_vars[0].get():
+                self.load_fastDAQ(0)
+            if self.load_fastDAQ_checkbutton_vars[1].get() and not self.fast_keep_plot_checkbutton_vars[1].get():
+                self.load_fastDAQ(1)
 
     # Method for changing data directories
     def update_directories(self):
@@ -707,10 +707,10 @@ class Application(tk.Frame):
                 'exist in their respective directories')
             self.num_cams = 0
             self.update_num_cams()
-            if self.load_fastDAQ_piezo_checkbutton_vars[0].get() and not self.piezo_keep_plot_checkbutton_vars[0].get():
-                self.load_fastDAQ_piezo(0)
-            if self.load_fastDAQ_piezo_checkbutton_vars[1].get() and not self.piezo_keep_plot_checkbutton_vars[1].get():
-                self.load_fastDAQ_piezo(1)
+            if self.load_fastDAQ_checkbutton_vars[0].get() and not self.fast_keep_plot_checkbutton_vars[0].get():
+                self.load_fastDAQ(0)
+            if self.load_fastDAQ_checkbutton_vars[1].get() and not self.fast_keep_plot_checkbutton_vars[1].get():
+                self.load_fastDAQ(1)
 
     # for when manual config path is updated
     def new_config_update(self):
@@ -933,107 +933,112 @@ class Application(tk.Frame):
                 button.config(state=tk.ACTIVE)
             self.source_button_var.set(0)
 
-    def load_fastDAQ_piezo(self, index):
-        # Loads fastDAQ_piezo information. Variable index refers to either loading the top or bottom frames
-        # All of the piezo variables should be stored in a list where the first element corresponds to the top,
+    def load_fastDAQ(self, index):
+        # Loads fastDAQ information. Variable index refers to either loading the top or bottom frames
+        # All of the fastDAQ variables should be stored in a list where the first element corresponds to the top,
         # and the second element corresponds to the bottom.
-        if not self.load_fastDAQ_piezo_checkbutton_vars[index].get():
-            self.destroy_children(self.piezo_tab_rights[index])
+        if not self.load_fastDAQ_checkbutton_vars[index].get():
+            self.destroy_children(self.fast_tab_rights[index])
         path = os.path.join(self.raw_directory, self.run)
         self.fastDAQ_event = GetEvent(path, self.event, "fastDAQ")
-        self.refresh_fastDAQ_piezo_choices()
+        self.refresh_fastDAQ_choices()
         
-        for i in range(len(self.piezo_checkbox_vars[index])):
-            self.piezo_checkbuttons[index][i]['state'] = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[index].get() else tk.DISABLED
-#        if self.load_fastDAQ_piezo_checkbutton_vars[index].get():
-#            for widget in self.piezo_checkbuttons[index]: 
+        for i in range(len(self.fastDAQ_checkbox_vars[index])):
+            self.fastDAQ_checkbuttons[index][i]['state'] = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[index].get() else tk.DISABLED
+            self.freq_cut_checkbuttons[index][i]['state'] = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[index].get() else tk.DISABLED
+#        if self.load_fastDAQ_checkbutton_vars[index].get():
+#            for widget in self.fastDAQ_checkbuttons[index]: 
 #                widget.configure(state=tk.NORMAL)
 #        else: 
-#            for widget in self.piezo_checkbuttons[index]: 
+#            for widget in self.fastDAQ_checkbuttons[index]: 
 #                widget.configure(state=tk.DISABLED)
-        if not self.piezo_keep_plot_checkbutton_vars[index].get(): 
-            self.draw_fastDAQ_piezo(index)
+        if not self.fast_keep_plot_checkbutton_vars[index].get(): 
+            self.draw_fastDAQ(index)
         return
 
-    def draw_all_fastDAQ_piezo_PMT_time(self):
-        self.draw_fastDAQ_piezo_PMT_time(0)
-        self.draw_fastDAQ_piezo_PMT_time(1)
+    def draw_all_fastDAQ_PMT_time(self):
+        self.draw_fastDAQ_PMT_time(0)
+        self.draw_fastDAQ_PMT_time(1)
         return
 
-    def draw_fastDAQ_piezo_PMT_time(self, index):
-        if self.piezo_ax[index] is None:
+    def draw_fastDAQ_PMT_time(self, index):
+        if self.fastDAQ_ax[index] is None:
             return
         if not self.draw_time_in_fastDAQ_tab_var.get():
             try:
-                self.piezo_line[index].remove()
-                self.piezo_fig[index].canvas.draw()
+                self.fastDAQ_line[index].remove()
+                self.fastDAQ_fig[index].canvas.draw()
             except:
                 pass
             return
-        if self.load_fastDAQ_piezo_checkbutton_vars[index].get():
-            old_ylim = self.piezo_ax[index].get_ylim()
-            if self.piezo_line[index] is not None:
+        if self.load_fastDAQ_checkbutton_vars[index].get():
+            old_ylim = self.fastDAQ_ax[index].get_ylim()
+            if self.fastDAQ_line[index] is not None:
                 try:
-                    self.piezo_line[index].remove()
+                    self.fastDAQ_line[index].remove()
                 except:
                     pass
-            self.piezo_line[index], = self.piezo_ax[index].plot([self.t0, self.t0], [-10, 10], "r-")
-            self.piezo_ax[index].set_ylim(old_ylim)
-            self.piezo_fig[index].canvas.draw()
+            self.fastDAQ_line[index], = self.fastDAQ_ax[index].plot([self.t0, self.t0], [-10, 10], "r-")
+            self.fastDAQ_ax[index].set_ylim(old_ylim)
+            self.fastDAQ_fig[index].canvas.draw()
         return
 
-    def draw_fastDAQ_piezo(self, index):
-        if not self.load_fastDAQ_piezo_checkbutton_vars[index].get():
+    def draw_fastDAQ(self, index):
+        if not self.load_fastDAQ_checkbutton_vars[index].get():
             return
         if int(self.run_type) == 10:
             self.error += "Not allowed to view piezo data for run_type=10\n"
-        self.piezos[index] = self.get_active_piezo_checkboxes(index)
+        self.fast_vars[index] = self.get_active_fastDAQ_checkboxes(index)
         try:
-            self.piezo_cutoff_low = int(self.piezo_cutoff_low_entries[index].get())
-            self.piezo_cutoff_high = int(self.piezo_cutoff_high_entries[index].get())
+            self.fastDAQ_cutoff_low = int(self.fastDAQ_cutoff_low_entries[index].get())
+            self.fastDAQ_cutoff_high = int(self.fastDAQ_cutoff_high_entries[index].get())
         except ValueError:
             logger.error(
                 "Invalid types for cutoffs. Frequency cutoffs must be int, time cutoffs must be int or float.")
             return
-        if not self.piezos[index]:
-            self.destroy_children(self.piezo_tab_rights[index])
+        if not self.fast_vars[index]:
+            self.destroy_children(self.fast_tab_rights[index])
             return
-        self.draw_filtered_piezo_trace(self.piezos[index], self.piezo_cutoff_low, self.piezo_cutoff_high, index)
-        self.draw_fastDAQ_piezo_PMT_time(index)
+        self.draw_filtered_fastDAQ_trace(self.fast_vars[index], self.fastDAQ_cutoff_low, self.fastDAQ_cutoff_high, index)
+        self.draw_fastDAQ_PMT_time(index)
         return
 
-    def draw_filtered_piezo_trace(self, piezos, lowf, highf, index):
+    def draw_filtered_fastDAQ_trace(self, piezos, lowf, highf, index):
         board = 0
         try:
-            if self.piezo_ax[index] is not None:
-                for line in self.piezo_ax[index].lines[:]:
+            if self.fastDAQ_ax[index] is not None:
+                for line in self.fastDAQ_ax[index].lines[:]:
                     line.remove()
             ylimits = [[],[]]
-            for piezo in piezos:
-                if piezo not in self.fastDAQ_event["fastDAQ"]["multiboards"][0] \
-                        and piezo in self.fastDAQ_event["fastDAQ"]["multiboards"][1]:
+            for i in range(len(piezos)):
+                var = piezos[i]
+                var_pos = np.where(np.array(self.all_fast_vars) == var)[0][0]
+                if var not in self.fastDAQ_event["fastDAQ"]["multiboards"][0] \
+                        and var in self.fastDAQ_event["fastDAQ"]["multiboards"][1]:
                     board=1
-                piezo_v = self.fastDAQ_event["fastDAQ"]["multiboards"][board][piezo]
-                piezo_time = self.fastDAQ_event["fastDAQ"]["multiboards"][board]["time"]
-                b, a = scipy.signal.butter(3, highf/len(piezo_v), "low")
-                filtered_piezo_v = scipy.signal.lfilter(b, a, piezo_v)
-                b, a = scipy.signal.butter(3, lowf/len(piezo_v), "high")
-                filtered_piezo_v = scipy.signal.lfilter(b, a, filtered_piezo_v)
-                if self.piezo_fig[index] is None:
-                    self.piezo_fig[index], self.piezo_ax[index] = plt.subplots(figsize=(8, 3), dpi=100)
-                self.piezo_ax[index].set_title('fastDAQ '+self.run+' '+str(self.event))
-                self.piezo_ax[index].set_xlabel("[s]")
-                self.piezo_ax[index].set_ylabel("Amplitude [get units later]")
-                self.piezo_ax[index].set_xlim(piezo_time[0], piezo_time[-1])
+                fastDAQ_v = self.fastDAQ_event["fastDAQ"]["multiboards"][board][var]
+                fastDAQ_time = self.fastDAQ_event["fastDAQ"]["multiboards"][board]["time"]
+                if self.freq_cut_vars[index][var_pos].get():
+                    b, a = scipy.signal.butter(3, highf/len(fastDAQ_v), "low")
+                    filtered_fastDAQ_v = scipy.signal.lfilter(b, a, fastDAQ_v)
+                    b, a = scipy.signal.butter(3, lowf/len(fastDAQ_v), "high")
+                    filtered_fastDAQ_v = scipy.signal.lfilter(b, a, filtered_fastDAQ_v)
+                else: filtered_fastDAQ_v = fastDAQ_v
+                if self.fastDAQ_fig[index] is None:
+                    self.fastDAQ_fig[index], self.fastDAQ_ax[index] = plt.subplots(figsize=(8, 3), dpi=100)
+                self.fastDAQ_ax[index].set_title('fastDAQ '+self.run+' '+str(self.event))
+                self.fastDAQ_ax[index].set_xlabel("[s]")
+                self.fastDAQ_ax[index].set_ylabel("Amplitude [get units later]")
+                self.fastDAQ_ax[index].set_xlim(fastDAQ_time[0], fastDAQ_time[-1])
                 plot_color="b"
-                for color, cb in zip(self.piezo_colors, self.piezo_checkbuttons[index]):
-                    if cb["text"] == piezo:
+                for color, cb in zip(self.fast_colors, self.fastDAQ_checkbuttons[index]):
+                    if cb["text"] == var:
                         plot_color = color
-                self.piezo_ax[index].plot(piezo_time, filtered_piezo_v, color=plot_color, label=piezo) # TODO: COLOR
-                ylimits[0].append(min(filtered_piezo_v))
-                ylimits[1].append(max(filtered_piezo_v))
+                self.fastDAQ_ax[index].plot(fastDAQ_time, filtered_fastDAQ_v, color=plot_color, label=var) # TODO: COLOR
+                ylimits[0].append(min(filtered_fastDAQ_v))
+                ylimits[1].append(max(filtered_fastDAQ_v))
                 temp_legend=[]
-                if self.piezo_plot_t0_checkbutton_vars[index].get():
+                if self.fastDAQ_plot_t0_checkbutton_vars[index].get():
                     #TODO: MAKE SURE THIS BUTTON IS DISABLED IF PMTs AREN'T LOADED
                     ### NEW VVV ###
                     # 1. Load binary reco file
@@ -1042,10 +1047,10 @@ class Application(tk.Frame):
                     # print("DEBUG: FETCHING DATA")
                     self.acoustic_data = ReadBinary.ReadBlock(acoustic_data_path,max_file_size=2000)
                     # print("DEBUG: DATA FETCHED")
-                    self.piezo_t0 = self.acoustic_data["bubble_t0"][self.event]
-                    # print("DEBUG:", self.piezo_t0)
-                    self.piezo_ax[index].axvline(x=self.piezo_t0[0], linestyle="dashed", color="r", label="t0[0]")
-                    self.piezo_ax[index].axvline(x=self.piezo_t0[1], linestyle="dashed", color="b", label="t0[1]")
+                    self.fastDAQ_t0 = self.acoustic_data["bubble_t0"][self.event]
+                    # print("DEBUG:", self.fastDAQ_t0)
+                    self.fastDAQ_ax[index].axvline(x=self.fastDAQ_t0[0], linestyle="dashed", color="r", label="t0[0]")
+                    self.fastDAQ_ax[index].axvline(x=self.fastDAQ_t0[1], linestyle="dashed", color="b", label="t0[1]")
                     temp_legend = ["t0[0]", "t0[1]"]
                     ### NEW ^^^ ###
 
@@ -1054,56 +1059,56 @@ class Application(tk.Frame):
 
                     ### OLD VVV ###
                     # if self.reco_row:
-                    #     self.piezo_ax[index].axvline(x=self.reco_row["fastDAQ_t0"], linestyle="dashed", color="r", label="t0")
+                    #     self.fastDAQ_ax[index].axvline(x=self.reco_row["fastDAQ_t0"], linestyle="dashed", color="r", label="t0")
                     #     self.incremented_piezo_event = True
                     # else:
                     #     if self.incremented_piezo_event:
                     #         self.error += "t0 unavailable: No reco data found for current event. Piezo trace not drawn."
                     #     else:
                     #         logger.error("t0 unavailable: No reco data found for current event. Piezo trace not drawn.")
-                    #     self.piezo_plot_t0_checkbutton_vars[index].set(False)
+                    #     self.fastDAQ_plot_t0_checkbutton_vars[index].set(False)
                     #     self.incremented_piezo_event = False
                     ### OLD ^^^ ###
 
                 temp_sticky = tk.NW if index == 0 else tk.SW
-                self.place_graph_and_toolbar(figure=self.piezo_fig[index], master=self.piezo_tab_rights[index], sticky=temp_sticky)
+                self.place_graph_and_toolbar(figure=self.fastDAQ_fig[index], master=self.fast_tab_rights[index], sticky=temp_sticky)
             if ylimits != [[],[]]:
                 ylimits = [min(ylimits[0]), max(ylimits[1])]
             if ylimits[0]!=ylimits[1]: 
-                    self.piezo_ax[index].set_ylim([ylimits[0] - 0.1*(ylimits[1]-ylimits[0]), ylimits[1]+0.1*(ylimits[1]-ylimits[0])])
+                    self.fastDAQ_ax[index].set_ylim([ylimits[0] - 0.1*(ylimits[1]-ylimits[0]), ylimits[1]+0.1*(ylimits[1]-ylimits[0])])
             # MAKE THE LEGEND
-            if self.piezo_ax[index] is not None:
-                self.piezo_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
+            if self.fastDAQ_ax[index] is not None:
+                self.fastDAQ_ax[index].legend(bbox_to_anchor=(0.8, 0.3), loc='upper center')
 
         except (KeyError, IndexError):
-            self.error += "Piezo data not found.\n"
-            logger.error("Piezo data not found.")
-            self.destroy_children(self.piezo_tab_rights[index])
-            canvas = tk.Canvas(self.piezo_tab_rights[index], width=self.init_image_width, height=self.init_image_height)
-            # self.load_fastDAQ_piezo_checkbuttons[index].toggle()
+            self.error += "FastDAQ data not found.\n"
+            logger.error("FastDAQ data not found.")
+            self.destroy_children(self.fast_tab_rights[index])
+            canvas = tk.Canvas(self.fast_tab_rights[index], width=self.init_image_width, height=self.init_image_height)
+            # self.load_fastDAQ_checkbuttons[index].toggle()
             self.reset_zoom(canvas)
         return
 
-    def get_active_piezo_checkboxes(self, index):
+    def get_active_fastDAQ_checkboxes(self, index):
         out = []
-        n_cb = len(self.piezo_checkbox_vars[index])
+        n_cb = len(self.fastDAQ_checkbox_vars[index])
         for n in range(n_cb):
-            if self.piezo_checkbox_vars[index][n].get() and self.piezo_checkbuttons[index][n]["text"] not in out:
-                out.append(self.piezo_checkbuttons[index][n]["text"])
-        #out.append(self.piezo_checkbuttons[index][n]["text"] if self.piezo_checkbox_vars[index][n].get() else 0 for n in range(len(self.piezo_checkbox_vars[index])))
+            if self.fastDAQ_checkbox_vars[index][n].get() and self.fastDAQ_checkbuttons[index][n]["text"] not in out:
+                out.append(self.fastDAQ_checkbuttons[index][n]["text"])
+        #out.append(self.fastDAQ_checkbuttons[index][n]["text"] if self.fastDAQ_checkbox_vars[index][n].get() else 0 for n in range(len(self.fastDAQ_checkbox_vars[index])))
         return out
 
     def draw_piezos_from_checkbuttons(self, index=0):
         # Go through the list of checkbuttons for a given index and plot them on the index's graph
-        # with the correct color from self.piezo_colors .. or something.
-        n_cb = len(self.piezo_checkbox_vars[index])
+        # with the correct color from self.fast_colors .. or something.
+        n_cb = len(self.fastDAQ_checkbox_vars[index])
         for n in range(n_cb):
-            if self.piezo_checkbox_vars[index][n].get():
-                label = self.piezo_checkbuttons[index][n]["text"]
+            if self.fastDAQ_checkbox_vars[index][n].get():
+                label = self.fastDAQ_checkbuttons[index][n]["text"]
                 print("(Not) Plotting", label)
         return
 
-    def refresh_fastDAQ_piezo_choices(self):
+    def refresh_fastDAQ_choices(self):
         if self.fastDAQ_event["fastDAQ"]["loaded"] is False:
             return
         board = 0
@@ -1111,28 +1116,39 @@ class Application(tk.Frame):
         exclude = ["time", "loaded", "bindata", "caldata", "multiboards"]
         choices = [choice for choice in new_choices if choice not in exclude]
         
-        self.piezo_checkbox_vars = [[],[]]
+        self.all_fast_vars = []
+        self.fastDAQ_checkbox_vars = [[],[]]
+        self.freq_cut_vars = [[],[]]
         for n in range(len(choices)):
-            self.piezo_checkbox_vars[0].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[0], value=1 if choices[n] in self.piezos[0] and self.load_fastDAQ_piezo_checkbutton_vars[0].get() else 0))
-            self.piezo_checkbuttons[0].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[0], text=choices[n], variable=self.piezo_checkbox_vars[0][-1], command = lambda:self.draw_fastDAQ_piezo(0), state = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[0].get() else tk.DISABLED))
-            self.piezo_checkbuttons[0][-1].grid(row=n, column=0, sticky=tk.N)
+            self.all_fast_vars.append(choices[n])
+            self.fastDAQ_checkbox_vars[0].append(tk.BooleanVar(master=self.fastDAQ_checkbutton_frames[0], value=1 if choices[n] in self.fast_vars[0] and self.load_fastDAQ_checkbutton_vars[0].get() else 0))
+            self.fastDAQ_checkbuttons[0].append(tk.Checkbutton(master=self.fastDAQ_checkbutton_frames[0], text=choices[n], variable=self.fastDAQ_checkbox_vars[0][-1], command = lambda:self.draw_fastDAQ(0), state = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[0].get() else tk.DISABLED))
+            self.fastDAQ_checkbuttons[0][-1].grid(row=n+1, column=0, sticky='W')
             
-            self.piezo_checkbox_vars[1].append(tk.BooleanVar(master=self.piezo_checkbutton_frames[1], value=1 if choices[n] in self.piezos[1] and self.load_fastDAQ_piezo_checkbutton_vars[1].get() else 0))
-            self.piezo_checkbuttons[1].append(tk.Checkbutton(master=self.piezo_checkbutton_frames[1], text=choices[n], variable=self.piezo_checkbox_vars[1][-1], command = lambda:self.draw_fastDAQ_piezo(1), state = tk.NORMAL if self.load_fastDAQ_piezo_checkbutton_vars[1].get() else tk.DISABLED))
-            self.piezo_checkbuttons[1][-1].grid(row=n, column=0, sticky=tk.N)
+            self.freq_cut_vars[0].append(tk.BooleanVar(master=self.fastDAQ_checkbutton_frames[0], value=1))
+            self.freq_cut_checkbuttons[0].append(tk.Checkbutton(master=self.fastDAQ_checkbutton_frames[0], variable=self.freq_cut_vars[0][-1], command = lambda:self.draw_fastDAQ(0), state = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[0].get() else tk.DISABLED))
+            self.freq_cut_checkbuttons[0][-1].grid(row=n+1, column=1, sticky='WE')
+            
+            self.fastDAQ_checkbox_vars[1].append(tk.BooleanVar(master=self.fastDAQ_checkbutton_frames[1], value=1 if choices[n] in self.fast_vars[1] and self.load_fastDAQ_checkbutton_vars[1].get() else 0))
+            self.fastDAQ_checkbuttons[1].append(tk.Checkbutton(master=self.fastDAQ_checkbutton_frames[1], text=choices[n], variable=self.fastDAQ_checkbox_vars[1][-1], command = lambda:self.draw_fastDAQ(1), state = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[1].get() else tk.DISABLED))
+            self.fastDAQ_checkbuttons[1][-1].grid(row=n+1, column=0, sticky='W')
+            
+            self.freq_cut_vars[1].append(tk.BooleanVar(master=self.fastDAQ_checkbutton_frames[1], value=1))
+            self.freq_cut_checkbuttons[1].append(tk.Checkbutton(master=self.fastDAQ_checkbutton_frames[1], variable=self.freq_cut_vars[1][-1], command = lambda:self.draw_fastDAQ(1), state = tk.NORMAL if self.load_fastDAQ_checkbutton_vars[1].get() else tk.DISABLED))
+            self.freq_cut_checkbuttons[1][-1].grid(row=n+1, column=1, sticky='WE')
         return
 
-    def piezo_sync_xlim(self, index):
-        if self.piezo_ax[0] is not None and self.piezo_ax[1] is not None:
-            xlow, xhigh = self.piezo_ax[int(not index)].get_xlim()
-            self.piezo_ax[index].set_xlim(xlow, xhigh)
-            self.place_graph_and_toolbar(figure=self.piezo_fig[index],master=self.piezo_tab_rights[index], sticky=tk.NW if index == 0 else tk.SW)
+    def fast_sync_xlim(self, index):
+        if self.fastDAQ_ax[0] is not None and self.fastDAQ_ax[1] is not None:
+            xlow, xhigh = self.fastDAQ_ax[int(not index)].get_xlim()
+            self.fastDAQ_ax[index].set_xlim(xlow, xhigh)
+            self.place_graph_and_toolbar(figure=self.fastDAQ_fig[index],master=self.fast_tab_rights[index], sticky=tk.NW if index == 0 else tk.SW)
 
     def increment_PMT_trigger(self, n):
         self.n_PMT_trig.set(value=self.n_PMT_trig.get() + n)
         self.load_PMT_traces()
-        self.draw_fastDAQ_piezo_PMT_time(0)
-        self.draw_fastDAQ_piezo_PMT_time(1)
+        self.draw_fastDAQ_PMT_time(0)
+        self.draw_fastDAQ_PMT_time(1)
         return
 
     def forward_PMT_trigger(self):
@@ -1180,11 +1196,11 @@ class Application(tk.Frame):
         self.destroy_children(self.pmt_graph_frame)
         if not self.draw_pmt_traces_var.get():
             self.draw_time_in_fastDAQ_tab_var.set(0)
-            self.piezo_plot_t0_checkbutton_var_top.set(0)
-            self.piezo_plot_t0_checkbutton_var_bottom.set(0)
-            self.disable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.piezo_plot_t0_checkbutton_top,self.piezo_plot_t0_checkbutton_bottom])
+            self.fastDAQ_plot_t0_checkbutton_var_top.set(0)
+            self.fastDAQ_plot_t0_checkbutton_var_bottom.set(0)
+            self.disable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.fastDAQ_plot_t0_checkbutton_top,self.fastDAQ_plot_t0_checkbutton_bottom])
             return
-        self.enable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.piezo_plot_t0_checkbutton_top,self.piezo_plot_t0_checkbutton_bottom])
+        self.enable_widgets(self.bottom_frame_3_bottom.grid_slaves() + [self.fastDAQ_plot_t0_checkbutton_top,self.fastDAQ_plot_t0_checkbutton_bottom])
         pmt_data_path = "{raw}/{run}/{event}/PMTtraces.bin".format(raw=self.raw_directory,
                                                                    run=self.run, event=self.event)
         align_data_path = "{reco}/{run}/PMTfastDAQalignment_{run}.bin".format(reco=self.reco_directory,
@@ -1233,7 +1249,7 @@ class Application(tk.Frame):
             align_t0_frac = align_data["PMT_trigt0_frac"][self.event]
             # Sanity Check
             if align_t0_frac < 0:
-                logger.error("PMT fastDAQ alignment failed. Unable to recover calibrated time of PMT trigger.")
+                logger.error("PMT fastDAQ alignment failed. U3772040-818559nable to recover calibrated time of PMT trigger.")
                 self.t0 = -1.0
             else:
                 self.t0 = self.return_pmt_time((trace_t0_sec, trace_t0_frac), (align_t0_sec, align_t0_frac))
@@ -1491,16 +1507,16 @@ class Application(tk.Frame):
     def create_widgets(self):
         self.notebook = ttk.Notebook(self, padding=[0, 0, 0, 0])
         self.camera_tab = tk.Frame(self.notebook)
-        self.piezo_tab = tk.Frame(self.notebook)
+        self.fast_tab = tk.Frame(self.notebook)
         self.PMT_tab = tk.Frame(self.notebook)
         self.slow_tab = tk.Frame(self.notebook)
         self.config_tab = tk.Frame(self.notebook)
 
-        self.notebook.add(self.camera_tab, text='camera')
-        self.notebook.add(self.piezo_tab, text='piezo')
+        self.notebook.add(self.camera_tab, text='Camera')
+        self.notebook.add(self.fast_tab, text='FastDAQ')
         self.notebook.add(self.PMT_tab, text='PMT')
-        self.notebook.add(self.slow_tab, text='slow')
-        self.notebook.add(self.config_tab, text='configuration')
+        self.notebook.add(self.slow_tab, text='SlowDAQ')
+        self.notebook.add(self.config_tab, text='Configuration')
         self.notebook.grid(row=0, column=0, columnspan=5)
 
         # Setup frames to be used on the top (in tabs)
@@ -1517,213 +1533,223 @@ class Application(tk.Frame):
             canvas.cam = cam
             self.canvases.append(canvas)
         
-        # Piezos tab
-        # First setup frames for piezos tab
-        self.piezo_tab_left = tk.Frame(self.piezo_tab, bd=5, relief=tk.SUNKEN)
-        self.piezo_tab_left.grid(row=0, column=0, sticky='NW')
+        # FastDAQ tab
+        # First setup frames for fastDAQ tab
+        self.fast_tab_left = tk.Frame(self.fast_tab, bd=5, relief=tk.SUNKEN)
+        self.fast_tab_left.grid(row=0, column=0, sticky='NW')
 
-        self.piezo_tab_left_top = tk.Frame(self.piezo_tab_left, bd=2, relief=tk.SUNKEN)
-        self.piezo_tab_left_top.grid(row=0, column=0, sticky=tk.N)
-        self.piezo_tab_left_bottom = tk.Frame(self.piezo_tab_left, bd=2, relief=tk.SUNKEN)
-        self.piezo_tab_left_bottom.grid(row=1, column=0, sticky=tk.N, pady=(140, 0))
+        self.fast_tab_left_top = tk.Frame(self.fast_tab_left, bd=2, relief=tk.SUNKEN)
+        self.fast_tab_left_top.grid(row=0, column=0, sticky=tk.N)
+        self.fast_tab_left_bottom = tk.Frame(self.fast_tab_left, bd=2, relief=tk.SUNKEN)
+        self.fast_tab_left_bottom.grid(row=1, column=0, sticky=tk.N, pady=(140, 0))
 
-        self.piezo_tab_right = tk.Frame(self.piezo_tab, bd=5, relief=tk.SUNKEN)
-        self.piezo_tab_right.grid(row=0, column=1, sticky='NW')
+        self.fast_tab_right = tk.Frame(self.fast_tab, bd=5, relief=tk.SUNKEN)
+        self.fast_tab_right.grid(row=0, column=1, sticky='NW')
 
-        self.piezo_tab_right_top = tk.Frame(self.piezo_tab_right, bd=2, relief=tk.SUNKEN)
-        self.piezo_tab_right_top.grid(row=0, column=0, sticky=tk.N)
-        self.piezo_tab_right_bottom = tk.Frame(self.piezo_tab_right, bd=2, relief=tk.SUNKEN)
-        self.piezo_tab_right_bottom.grid(row=1, column=0, sticky=tk.S)
-        self.piezo_tab_rights = [self.piezo_tab_right_top,
-                                 self.piezo_tab_right_bottom]
-        self.piezo_ax = [None, None]
-        self.piezo_line = [None, None]
-        self.piezo_fig = [None, None]
-        # Now within the piezos frames setup stuff
-        self.piezos = [[],[]]
-        self.load_fastDAQ_piezo_checkbutton_top = tk.Checkbutton(
-            self.piezo_tab_left_top,
+        self.fast_tab_right_top = tk.Frame(self.fast_tab_right, bd=2, relief=tk.SUNKEN)
+        self.fast_tab_right_top.grid(row=0, column=0, sticky=tk.N)
+        self.fast_tab_right_bottom = tk.Frame(self.fast_tab_right, bd=2, relief=tk.SUNKEN)
+        self.fast_tab_right_bottom.grid(row=1, column=0, sticky=tk.S)
+        self.fast_tab_rights = [self.fast_tab_right_top,
+                                 self.fast_tab_right_bottom]
+        self.fastDAQ_ax = [None, None]
+        self.fastDAQ_line = [None, None]
+        self.fastDAQ_fig = [None, None]
+        # Now within the fastDAQ frames setup stuff
+        self.all_fast_vars = []
+        self.fast_vars = [[],[]]
+        self.load_fastDAQ_checkbutton_top = tk.Checkbutton(
+            self.fast_tab_left_top,
             text='Load fastDAQ',
-            variable=self.load_fastDAQ_piezo_checkbutton_var_top, #top
-            command=lambda: self.load_fastDAQ_piezo(0))
-        self.load_fastDAQ_piezo_checkbutton_top.grid(row=0, column=0, columnspan=2, sticky='WE')
-        self.load_fastDAQ_piezo_checkbutton_bottom = tk.Checkbutton(
-            self.piezo_tab_left_bottom,
+            variable=self.load_fastDAQ_checkbutton_var_top, #top
+            command=lambda: self.load_fastDAQ(0))
+        self.load_fastDAQ_checkbutton_top.grid(row=0, column=0, columnspan=2, sticky='WE')
+        self.load_fastDAQ_checkbutton_bottom = tk.Checkbutton(
+            self.fast_tab_left_bottom,
             text="Load fastDAQ",
-            variable=self.load_fastDAQ_piezo_checkbutton_var_bottom,
-            command=lambda: self.load_fastDAQ_piezo(1))
-        self.load_fastDAQ_piezo_checkbutton_bottom.grid(row=0, column=0, columnspan=2, sticky=tk.EW)
-        self.load_fastDAQ_piezo_checkbuttons = [self.load_fastDAQ_piezo_checkbutton_top,
-                                                self.load_fastDAQ_piezo_checkbutton_bottom]
-        self.piezo_label_top = tk.Label(self.piezo_tab_left_top, text='Piezo:')
-        self.piezo_label_top.grid(row=1, column=0, sticky='WE')
+            variable=self.load_fastDAQ_checkbutton_var_bottom,
+            command=lambda: self.load_fastDAQ(1))
+        self.load_fastDAQ_checkbutton_bottom.grid(row=0, column=0, columnspan=2, sticky=tk.EW)
+        self.load_fastDAQ_checkbuttons = [self.load_fastDAQ_checkbutton_top,
+                                                self.load_fastDAQ_checkbutton_bottom]
 
-        self.piezo_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Piezo:')
-        self.piezo_label_bottom.grid(row=1, column=0, sticky='WE')
-        self.piezo_labels = [self.piezo_label_top,
-                             self.piezo_label_bottom]
-
-        self.piezo_checkbutton_frame_top = tk.Frame(master=self.piezo_tab_left_top)
-        self.piezo_checkbutton_frame_top.grid(row=1, column=1, sticky=tk.N)
-        self.piezo_checkbutton_frame_bot = tk.Frame(master=self.piezo_tab_left_bottom)
-        self.piezo_checkbutton_frame_bot.grid(row=1, column=1, sticky=tk.N)
-        self.piezo_checkbutton_frames = [self.piezo_checkbutton_frame_top,
-                                         self.piezo_checkbutton_frame_bot]
+        self.fastDAQ_checkbutton_frame_top = tk.Frame(master=self.fast_tab_left_top)
+        self.fastDAQ_checkbutton_frame_top.grid(row=1, column=0, columnspan=2, sticky=tk.N)
+        self.fastDAQ_checkbutton_frame_bot = tk.Frame(master=self.fast_tab_left_bottom)
+        self.fastDAQ_checkbutton_frame_bot.grid(row=1, column=0, columnspan=2, sticky=tk.N)
+        self.fastDAQ_checkbutton_frames = [self.fastDAQ_checkbutton_frame_top,
+                                         self.fastDAQ_checkbutton_frame_bot]
+        
+        self.fastDAQ_label1_top = tk.Label(self.fastDAQ_checkbutton_frame_top, text='Variable')
+        self.fastDAQ_label1_top.grid(row=0, column=0, sticky='WE')
+        self.fastDAQ_label2_top = tk.Label(self.fastDAQ_checkbutton_frame_top, text='Freq cut')
+        self.fastDAQ_label2_top.grid(row=0, column=1, sticky='WE')
+        self.fastDAQ_label1_bottom = tk.Label(self.fastDAQ_checkbutton_frame_bot, text='Variable')
+        self.fastDAQ_label1_bottom.grid(row=0, column=0, sticky='WE')
+        self.fastDAQ_label2_bottom = tk.Label(self.fastDAQ_checkbutton_frame_bot, text='Freq cut')
+        self.fastDAQ_label2_bottom.grid(row=0, column=1, sticky='WE')
+        self.fastDAQ_labels = [self.fastDAQ_label1_top, self.fastDAQ_label2_top,
+                             self.fastDAQ_label1_bottom, self.fastDAQ_label2_bottom]
+        
         choices = ["Dytran"]
-        self.piezo_checkbox_vars_top = [ ]
-        self.piezo_checkbox_vars_bot = [ ]
-        self.piezo_checkbuttons_top = [ ]
-        self.piezo_checkbuttons_bot = [ ]
-        self.piezo_colors = ['b','g','c','k','y','m']*2
-        self.piezo_checkbox_vars = [self.piezo_checkbox_vars_top,
-                                    self.piezo_checkbox_vars_bot]
-        self.piezo_checkbuttons = [self.piezo_checkbuttons_top,
-                                   self.piezo_checkbuttons_bot]
+        self.fastDAQ_checkbox_vars_top = []
+        self.fastDAQ_checkbox_vars_bot = []
+        self.fastDAQ_checkbuttons_top = []
+        self.fastDAQ_checkbuttons_bot = []
+        self.freq_cut_vars_top = []
+        self.freq_cut_vars_bot = []
+        self.freq_cut_checkbuttons_top = []
+        self.freq_cut_checkbuttons_bot = []
+        self.fast_colors = ['b','g','c','k','y','m']*2
+        self.fastDAQ_checkbox_vars = [self.fastDAQ_checkbox_vars_top, self.fastDAQ_checkbox_vars_bot]
+        self.fastDAQ_checkbuttons = [self.fastDAQ_checkbuttons_top, self.fastDAQ_checkbuttons_bot]
+        self.freq_cut_vars = [self.freq_cut_vars_top, self.freq_cut_vars_bot]
+        self.freq_cut_checkbuttons = [self.freq_cut_checkbuttons_top, self.freq_cut_checkbuttons_bot]
         # Build the checkbuttons
 
-        # piezo dropdown
-        #self.piezo_dropdown_var_top = tk.StringVar(master=self.piezo_tab_right_top, value = choices[0])
-        self.piezo_dropdown_var_bottom = tk.StringVar(master=self.piezo_tab_right_top, value=choices[0])
-        self.piezo_dropdown_vars = [None,
-                                    self.piezo_dropdown_var_bottom]
+        # fastDAQ dropdown
+        #self.fast_dropdown_var_top = tk.StringVar(master=self.fast_tab_right_top, value = choices[0])
+        self.fast_dropdown_var_bottom = tk.StringVar(master=self.fast_tab_right_top, value=choices[0])
+        self.fast_dropdown_vars = [None,
+                                    self.fast_dropdown_var_bottom]
 
-        #self.piezo_dropdown_top = tk.OptionMenu(master=self.piezo_tab_left_top,
+        #self.fast_dropdown_top = tk.OptionMenu(master=self.fast_tab_left_top,
         #                                    value=choices,
-        #                                    variable=self.piezo_dropdown_var_top)
-        #self.piezo_dropdown_top.grid(row=1, column=1, sticky=tk.EW)
-        #self.piezo_dropdown_bottom = tk.OptionMenu(master=self.piezo_tab_left_bottom,
+        #                                    variable=self.fast_dropdown_var_top)
+        #self.fast_dropdown_top.grid(row=1, column=1, sticky=tk.EW)
+        #self.fast_dropdown_bottom = tk.OptionMenu(master=self.fast_tab_left_bottom,
         #                                        value=choices,
-        #                                        variable=self.piezo_dropdown_var_bottom)
-        #self.piezo_dropdown_bottom.grid(row=1, column=1, sticky=tk.EW)
-        #self.piezo_dropdowns = [None,
-        #                        self.piezo_dropdown_bottom]
+        #                                        variable=self.fast_dropdown_var_bottom)
+        #self.fast_dropdown_bottom.grid(row=1, column=1, sticky=tk.EW)
+        #self.fast_dropdowns = [None,
+        #                        self.fast_dropdown_bottom]
 
-        # piezo cutoff
-        self.piezo_cutoff_low_label_top = tk.Label(self.piezo_tab_left_top, text='Freq cutoff low:')
-        self.piezo_cutoff_low_label_top.grid(row=2, column=0, sticky='WE')
-        self.piezo_cutoff_low_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Freq cutoff low:')
-        self.piezo_cutoff_low_label_bottom.grid(row=2, column=0, sticky='WE')
-        self.piezo_cutoff_low_labels = [self.piezo_cutoff_low_label_top,
-                                        self.piezo_cutoff_low_label_bottom]
+        # fastDAQ cutoff
+        self.fastDAQ_cutoff_low_label_top = tk.Label(self.fast_tab_left_top, text='Freq cutoff low:')
+        self.fastDAQ_cutoff_low_label_top.grid(row=2, column=0, sticky='WE')
+        self.fastDAQ_cutoff_low_label_bottom = tk.Label(self.fast_tab_left_bottom, text='Freq cutoff low:')
+        self.fastDAQ_cutoff_low_label_bottom.grid(row=2, column=0, sticky='WE')
+        self.fastDAQ_cutoff_low_labels = [self.fastDAQ_cutoff_low_label_top,
+                                        self.fastDAQ_cutoff_low_label_bottom]
 
-        self.piezo_cutoff_low_entry_top = tk.Entry(self.piezo_tab_left_top, width=12)
-        self.piezo_cutoff_low_entry_top.insert(0, self.piezo_cutoff_low)
-        self.piezo_cutoff_low_entry_top.grid(row=2, column=1, sticky='WE')
-        self.piezo_cutoff_low_entry_bottom = tk.Entry(self.piezo_tab_left_bottom, width=12)
-        self.piezo_cutoff_low_entry_bottom.insert(0, self.piezo_cutoff_low)
-        self.piezo_cutoff_low_entry_bottom.grid(row=2, column=1, sticky='WE')
-        self.piezo_cutoff_low_entries = [self.piezo_cutoff_low_entry_top,
-                                         self.piezo_cutoff_low_entry_bottom]
+        self.fastDAQ_cutoff_low_entry_top = tk.Entry(self.fast_tab_left_top, width=12)
+        self.fastDAQ_cutoff_low_entry_top.insert(0, self.fastDAQ_cutoff_low)
+        self.fastDAQ_cutoff_low_entry_top.grid(row=2, column=1, sticky='WE')
+        self.fastDAQ_cutoff_low_entry_bottom = tk.Entry(self.fast_tab_left_bottom, width=12)
+        self.fastDAQ_cutoff_low_entry_bottom.insert(0, self.fastDAQ_cutoff_low)
+        self.fastDAQ_cutoff_low_entry_bottom.grid(row=2, column=1, sticky='WE')
+        self.fastDAQ_cutoff_low_entries = [self.fastDAQ_cutoff_low_entry_top,
+                                         self.fastDAQ_cutoff_low_entry_bottom]
 
-        self.piezo_cutoff_high_label_top = tk.Label(self.piezo_tab_left_top, text='Freq cutoff high:')
-        self.piezo_cutoff_high_label_top.grid(row=3, column=0, sticky='WE')
-        self.piezo_cutoff_high_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Freq cutoff high:')
-        self.piezo_cutoff_high_label_bottom.grid(row=3, column=0, sticky='WE')
-        self.piezo_cutoff_high_labels = [self.piezo_cutoff_high_label_top,
-                                         self.piezo_cutoff_high_label_bottom]
+        self.fastDAQ_cutoff_high_label_top = tk.Label(self.fast_tab_left_top, text='Freq cutoff high:')
+        self.fastDAQ_cutoff_high_label_top.grid(row=3, column=0, sticky='WE')
+        self.fastDAQ_cutoff_high_label_bottom = tk.Label(self.fast_tab_left_bottom, text='Freq cutoff high:')
+        self.fastDAQ_cutoff_high_label_bottom.grid(row=3, column=0, sticky='WE')
+        self.fastDAQ_cutoff_high_labels = [self.fastDAQ_cutoff_high_label_top,
+                                         self.fastDAQ_cutoff_high_label_bottom]
 
-        self.piezo_cutoff_high_entry_top = tk.Entry(self.piezo_tab_left_top, width=12)
-        self.piezo_cutoff_high_entry_top.insert(0, self.piezo_cutoff_high)
-        self.piezo_cutoff_high_entry_top.grid(row=3, column=1, sticky='WE')
-        self.piezo_cutoff_high_entry_bottom = tk.Entry(self.piezo_tab_left_bottom, width=12)
-        self.piezo_cutoff_high_entry_bottom.insert(0, self.piezo_cutoff_high)
-        self.piezo_cutoff_high_entry_bottom.grid(row=3, column=1, sticky='WE')
-        self.piezo_cutoff_high_entries = [self.piezo_cutoff_high_entry_top,
-                                          self.piezo_cutoff_high_entry_bottom]
+        self.fastDAQ_cutoff_high_entry_top = tk.Entry(self.fast_tab_left_top, width=12)
+        self.fastDAQ_cutoff_high_entry_top.insert(0, self.fastDAQ_cutoff_high)
+        self.fastDAQ_cutoff_high_entry_top.grid(row=3, column=1, sticky='WE')
+        self.fastDAQ_cutoff_high_entry_bottom = tk.Entry(self.fast_tab_left_bottom, width=12)
+        self.fastDAQ_cutoff_high_entry_bottom.insert(0, self.fastDAQ_cutoff_high)
+        self.fastDAQ_cutoff_high_entry_bottom.grid(row=3, column=1, sticky='WE')
+        self.fastDAQ_cutoff_high_entries = [self.fastDAQ_cutoff_high_entry_top,
+                                          self.fastDAQ_cutoff_high_entry_bottom]
         # Commented out JG 10/12/2017. No need to have these buttons and options when we can just
         # chose our time window using the zoom tool. May want to revert, just uncomment this if you do.
-        # self.piezo_timerange_checkbutton_top = tk.Checkbutton(
-        #     self.piezo_tab_left_top, text='Full time window',
-        #     variable=self.piezo_timerange_checkbutton_var_top,
-        #     command=lambda: self.draw_fastDAQ_piezo(0))
-        # self.piezo_timerange_checkbutton_top.grid(row=6, column=0, columnspan=2, sticky='WE')
-        # self.piezo_timerange_checkbutton_bottom = tk.Checkbutton(
-        #     self.piezo_tab_left_bottom, text='Full time window',
-        #     variable=self.piezo_timerange_checkbutton_var_bottom,
-        #     command=lambda: self.draw_fastDAQ_piezo(1))
-        # self.piezo_timerange_checkbutton_bottom.grid(row=6, column=0, columnspan=2, sticky='WE')
-        # self.piezo_timerange_checkbuttons = [self.piezo_timerange_checkbutton_top,
-        #                                      self.piezo_timerange_checkbutton_bottom]
+        # self.fastDAQ_timerange_checkbutton_top = tk.Checkbutton(
+        #     self.fast_tab_left_top, text='Full time window',
+        #     variable=self.fastDAQ_timerange_checkbutton_var_top,
+        #     command=lambda: self.draw_fastDAQ(0))
+        # self.fastDAQ_timerange_checkbutton_top.grid(row=6, column=0, columnspan=2, sticky='WE')
+        # self.fastDAQ_timerange_checkbutton_bottom = tk.Checkbutton(
+        #     self.fast_tab_left_bottom, text='Full time window',
+        #     variable=self.fastDAQ_timerange_checkbutton_var_bottom,
+        #     command=lambda: self.draw_fastDAQ(1))
+        # self.fastDAQ_timerange_checkbutton_bottom.grid(row=6, column=0, columnspan=2, sticky='WE')
+        # self.fastDAQ_timerange_checkbuttons = [self.fastDAQ_timerange_checkbutton_top,
+        #                                      self.fastDAQ_timerange_checkbutton_bottom]
         #
-        # self.piezo_beginning_time_label_top = tk.Label(self.piezo_tab_left_top, text='Beginning Time:')
+        # self.piezo_beginning_time_label_top = tk.Label(self.fast_tab_left_top, text='Beginning Time:')
         # self.piezo_beginning_time_label_top.grid(row=4, column=0, sticky='WE')
-        # self.piezo_beginning_time_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Beginning Time:')
+        # self.piezo_beginning_time_label_bottom = tk.Label(self.fast_tab_left_bottom, text='Beginning Time:')
         # self.piezo_beginning_time_label_bottom.grid(row=4, column=0, sticky='WE')
         # self.piezo_beginning_time_labels = [self.piezo_beginning_time_label_top,
         #                                     self.piezo_beginning_time_label_bottom]
         #
-        # self.piezo_beginning_time_entry_top = tk.Entry(self.piezo_tab_left_top, width=12)
+        # self.piezo_beginning_time_entry_top = tk.Entry(self.fast_tab_left_top, width=12)
         # self.piezo_beginning_time_entry_top.insert(0, self.piezo_beginning_time)
         # self.piezo_beginning_time_entry_top.grid(row=4, column=1, sticky='WE')
-        # self.piezo_beginning_time_entry_bottom = tk.Entry(self.piezo_tab_left_bottom, width=12)
+        # self.piezo_beginning_time_entry_bottom = tk.Entry(self.fast_tab_left_bottom, width=12)
         # self.piezo_beginning_time_entry_bottom.insert(0, self.piezo_beginning_time)
         # self.piezo_beginning_time_entry_bottom.grid(row=4, column=1, sticky='WE')
         # self.piezo_beginning_time_entries = [self.piezo_beginning_time_entry_top,
         #                                      self.piezo_beginning_time_entry_bottom]
         #
-        # self.piezo_ending_time_label_top = tk.Label(self.piezo_tab_left_top, text='Ending Time:')
+        # self.piezo_ending_time_label_top = tk.Label(self.fast_tab_left_top, text='Ending Time:')
         # self.piezo_ending_time_label_top.grid(row=5, column=0, sticky='WE')
-        # self.piezo_ending_time_label_bottom = tk.Label(self.piezo_tab_left_bottom, text='Ending Time:')
+        # self.piezo_ending_time_label_bottom = tk.Label(self.fast_tab_left_bottom, text='Ending Time:')
         # self.piezo_ending_time_label_bottom.grid(row=5, column=0, sticky='WE')
         # self.piezo_ending_time_labels = [self.piezo_ending_time_label_top,
         #                                  self.piezo_ending_time_label_bottom]
         #
-        # self.piezo_ending_time_entry_top = tk.Entry(self.piezo_tab_left_top, width=12)
+        # self.piezo_ending_time_entry_top = tk.Entry(self.fast_tab_left_top, width=12)
         # self.piezo_ending_time_entry_top.insert(0, self.piezo_ending_time)
         # self.piezo_ending_time_entry_top.grid(row=5, column=1, sticky='WE')
-        # self.piezo_ending_time_entry_bottom = tk.Entry(self.piezo_tab_left_bottom, width=12)
+        # self.piezo_ending_time_entry_bottom = tk.Entry(self.fast_tab_left_bottom, width=12)
         # self.piezo_ending_time_entry_bottom.insert(0, self.piezo_ending_time)
         # self.piezo_ending_time_entry_bottom.grid(row=5, column=1, sticky='WE')
         # self.piezo_ending_time_entries = [self.piezo_ending_time_entry_top,
         #                                   self.piezo_ending_time_entry_bottom]
         
         # t0 checkbutton
-        self.piezo_plot_t0_checkbutton_top = tk.Checkbutton(
-            self.piezo_tab_left_top,
+        self.fastDAQ_plot_t0_checkbutton_top = tk.Checkbutton(
+            self.fast_tab_left_top,
             text='Show t0',
-            variable=self.piezo_plot_t0_checkbutton_var_top,
-            command=lambda: self.draw_fastDAQ_piezo(0))
-        self.piezo_plot_t0_checkbutton_top.grid(row=7, column=0, sticky='WE')
-        self.piezo_plot_t0_checkbutton_bottom = tk.Checkbutton(
-            self.piezo_tab_left_bottom,
+            variable=self.fastDAQ_plot_t0_checkbutton_var_top,
+            command=lambda: self.draw_fastDAQ(0))
+        self.fastDAQ_plot_t0_checkbutton_top.grid(row=4, column=0, sticky='WE')
+        self.fastDAQ_plot_t0_checkbutton_bottom = tk.Checkbutton(
+            self.fast_tab_left_bottom,
             text='Show t0',
-            variable=self.piezo_plot_t0_checkbutton_var_bottom,
-            command=lambda: self.draw_fastDAQ_piezo(1))
-        self.piezo_plot_t0_checkbutton_bottom.grid(row=7, column=0, sticky='WE')
-        self.piezo_plot_t0_checkbuttons = [self.piezo_plot_t0_checkbutton_top,
-                                           self.piezo_plot_t0_checkbutton_bottom]
+            variable=self.fastDAQ_plot_t0_checkbutton_var_bottom,
+            command=lambda: self.draw_fastDAQ(1))
+        self.fastDAQ_plot_t0_checkbutton_bottom.grid(row=4, column=0, sticky='WE')
+        self.fastDAQ_plot_t0_checkbuttons = [self.fastDAQ_plot_t0_checkbutton_top,
+                                           self.fastDAQ_plot_t0_checkbutton_bottom]
         
         # sync xlim button
-        self.piezo_sync_xlim_button_top = tk.Button(self.piezo_tab_left_top, text='sync xlim', command=lambda: self.piezo_sync_xlim(0))
-        self.piezo_sync_xlim_button_top.grid(row=7, column=1, sticky='WE')
-        self.piezo_sync_xlim_button_bottom = tk.Button(self.piezo_tab_left_bottom, text='sync xlim', command=lambda: self.piezo_sync_xlim(1))
-        self.piezo_sync_xlim_button_bottom.grid(row=7, column=1, sticky='WE')
-        self.piezo_sync_xlim_buttons = [self.piezo_sync_xlim_button_top, self.piezo_sync_xlim_button_bottom]
+        self.fast_sync_xlim_button_top = tk.Button(self.fast_tab_left_top, text='sync xlim', command=lambda: self.fast_sync_xlim(0))
+        self.fast_sync_xlim_button_top.grid(row=4, column=1, sticky='WE')
+        self.fast_sync_xlim_button_bottom = tk.Button(self.fast_tab_left_bottom, text='sync xlim', command=lambda: self.fast_sync_xlim(1))
+        self.fast_sync_xlim_button_bottom.grid(row=4, column=1, sticky='WE')
+        self.fast_sync_xlim_buttons = [self.fast_sync_xlim_button_top, self.fast_sync_xlim_button_bottom]
         
         # keep checkbutton
-        self.piezo_keep_plot_checkbutton_top = tk.Checkbutton(
-            self.piezo_tab_left_top,
+        self.fast_keep_plot_checkbutton_top = tk.Checkbutton(
+            self.fast_tab_left_top,
             text='Keep',
-            variable=self.piezo_keep_plot_checkbutton_var_top,
-            command=lambda: self.draw_fastDAQ_piezo(0))
-        self.piezo_keep_plot_checkbutton_top.grid(row=8, column=0, sticky=tk.N)
-        self.piezo_keep_plot_checkbutton_bottom = tk.Checkbutton(
-            self.piezo_tab_left_bottom,
+            variable=self.fast_keep_plot_checkbutton_var_top,
+            command=lambda: self.draw_fastDAQ(0))
+        self.fast_keep_plot_checkbutton_top.grid(row=5, column=0, sticky=tk.N)
+        self.fast_keep_plot_checkbutton_bottom = tk.Checkbutton(
+            self.fast_tab_left_bottom,
             text='Keep',
-            variable=self.piezo_keep_plot_checkbutton_var_bottom,
-            command=lambda: self.draw_fastDAQ_piezo(1))
-        self.piezo_keep_plot_checkbutton_bottom.grid(row=8, column=0, sticky=tk.N)
-        self.piezo_keep_plot_checkbuttons = [self.piezo_keep_plot_checkbutton_top,
-                                           self.piezo_keep_plot_checkbutton_bottom]
+            variable=self.fast_keep_plot_checkbutton_var_bottom,
+            command=lambda: self.draw_fastDAQ(1))
+        self.fast_keep_plot_checkbutton_bottom.grid(row=5, column=0, sticky=tk.N)
+        self.fast_keep_plot_checkbuttons = [self.fast_keep_plot_checkbutton_top,
+                                           self.fast_keep_plot_checkbutton_bottom]
         # reload button
-        self.reload_fastDAQ_piezo_button_top = tk.Button(self.piezo_tab_left_top, text='reload',
-                                                     command=lambda: self.draw_fastDAQ_piezo(0))
-        self.reload_fastDAQ_piezo_button_top.grid(row=8, column=1, sticky='WE')
-        self.reload_fastDAQ_piezo_button_bottom = tk.Button(self.piezo_tab_left_bottom, text='reload',
-                                                     command=lambda: self.draw_fastDAQ_piezo(1))
-        self.reload_fastDAQ_piezo_button_bottom.grid(row=8, column=1, sticky='WE')
-        self.reload_fastDAQ_piezo_buttons = [self.reload_fastDAQ_piezo_button_top,
-                                             self.reload_fastDAQ_piezo_button_bottom]
+        self.reload_fastDAQ_button_top = tk.Button(self.fast_tab_left_top, text='reload',
+                                                     command=lambda: self.draw_fastDAQ(0))
+        self.reload_fastDAQ_button_top.grid(row=5, column=1, sticky='WE')
+        self.reload_fastDAQ_button_bottom = tk.Button(self.fast_tab_left_bottom, text='reload',
+                                                     command=lambda: self.draw_fastDAQ(1))
+        self.reload_fastDAQ_button_bottom.grid(row=5, column=1, sticky='WE')
+        self.reload_fastDAQ_buttons = [self.reload_fastDAQ_button_top,
+                                             self.reload_fastDAQ_button_bottom]
         
         # PMT tab
         self.pmt_settings_frame = tk.Frame(master=self.PMT_tab, bd=5, relief=tk.SUNKEN)
@@ -1784,7 +1810,7 @@ class Application(tk.Frame):
         self.slowDAQ_checkbox_vars_bot = []
         self.slowDAQ_checkbuttons_top = []
         self.slowDAQ_checkbuttons_bot = []
-        self.slowDAQ_colors = ['b','g','c','k','y','m']
+        self.slowDAQ_colors = ['b','g','m','orange','r','k']
         self.slowDAQ_checkbox_vars = [self.slowDAQ_checkbox_vars_top, self.slowDAQ_checkbox_vars_bot]
         self.slowDAQ_checkbuttons = [self.slowDAQ_checkbuttons_top, self.slowDAQ_checkbuttons_bot]
         
@@ -1815,13 +1841,13 @@ class Application(tk.Frame):
             self.slow_tab_left_top,
             text='Keep',
             variable=self.slowDAQ_keep_plot_checkbutton_var_top,
-            command=lambda: self.draw_fastDAQ_piezo(0))
+            command=lambda: self.draw_fastDAQ(0))
         self.slowDAQ_keep_plot_checkbutton_top.grid(row=3, column=0, sticky='WE')
         self.slowDAQ_keep_plot_checkbutton_bottom = tk.Checkbutton(
             self.slow_tab_left_bottom,
             text='Keep',
             variable=self.slowDAQ_keep_plot_checkbutton_var_bottom,
-            command=lambda: self.draw_fastDAQ_piezo(1))
+            command=lambda: self.draw_fastDAQ(1))
         self.slowDAQ_keep_plot_checkbutton_bottom.grid(row=3, column=0, sticky='WE')
         self.slowDAQ_keep_plot_checkbuttons = [self.slowDAQ_keep_plot_checkbutton_top,
                                            self.slowDAQ_keep_plot_checkbutton_bottom]
@@ -2132,7 +2158,7 @@ class Application(tk.Frame):
         self.draw_time_in_fastDAQ_tab_checkbutton = tk.Checkbutton(master=self.bottom_frame_3_bottom,
                                                                    text="Draw PMT time in fastDAQ tab",
                                                                    variable=self.draw_time_in_fastDAQ_tab_var,
-                                                                   command=self.draw_all_fastDAQ_piezo_PMT_time)
+                                                                   command=self.draw_all_fastDAQ_PMT_time)
         self.draw_time_in_fastDAQ_tab_checkbutton.grid(row=1, column=0, columnspan=2, sticky=tk.W)
         self.back_PMT_trigger_button = tk.Button(master=self.bottom_frame_3_bottom,
                                                  text="Back PMT trigger",
