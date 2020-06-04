@@ -26,6 +26,8 @@ def boost(p_photon, cos_theta, Qval, mass_target = np.float64(9.01218307)): # re
                                1836.063, # 88Y
                                2734.0, # 88Y
                                1674.725, # 58Co
+                               1677.85, # 148Eu
+                               2173.28, # 148Eu
                                ])
 
     # Identify target by Q value
