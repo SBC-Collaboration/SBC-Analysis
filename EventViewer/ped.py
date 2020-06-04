@@ -273,7 +273,6 @@ class Application(tk.Frame):
         try:
             # look for npy file in the custome directory
             # has to run convert_raw_to_npy.py first to generate the file
-
             self.raw_events = np.load(os.path.join(self.npy_directory,'raw_events.npy'))
 
         except FileNotFoundError:
@@ -810,8 +809,13 @@ class Application(tk.Frame):
                 self.reco_row[k] = v[ind]
         else:
             self.reco_row = {}
+            date = self.raw_events[self.row_index]
+            ind = [[(str(i[0]) + '_' + str(i[1])) == date[0] for i in self.reco_events['runid']], 
+                    list(np.equal(self.reco_events['ev'], date[1]))]
+            ind = np.argwhere([ind[0][i] & ind[1][i] for i in range(len(ind[0]))])[0][0]
+            print(ind, self.row_index)
             for k,v in self.reco_events.items():
-                self.reco_row[k] = v[self.row_index]
+                self.reco_row[k] = v[ind]
         if ibub:
             offset = ibub - 1 if ibub > 1 else 0
             row = self.get_row(self.reco_events)
@@ -1600,7 +1604,7 @@ class Application(tk.Frame):
         self.freq_cut_vars_bot = []
         self.freq_cut_checkbuttons_top = []
         self.freq_cut_checkbuttons_bot = []
-        self.fast_colors = ['b','g','c','k','y','m']*2
+        self.fast_colors = ['b','g','c','k','orange','m']*2
         self.fastDAQ_checkbox_vars = [self.fastDAQ_checkbox_vars_top, self.fastDAQ_checkbox_vars_bot]
         self.fastDAQ_checkbuttons = [self.fastDAQ_checkbuttons_top, self.fastDAQ_checkbuttons_bot]
         self.freq_cut_vars = [self.freq_cut_vars_top, self.freq_cut_vars_bot]
