@@ -1,8 +1,12 @@
+#creates .jpg file in Captures folder in SBCcode/Cameras/RPi_CameraServers/python/Captures
+#file is labelled with data and time when taken
+
 import arducam_mipicamera as arducam
 #import v4l2
-import pypng 
 import time
 from datetime import datetime
+import numpy as np
+import os
 
 def set_controls(camera):
     try:
@@ -20,12 +24,14 @@ if __name__ == "__main__":
         fmt = camera.set_resolution(1920, 1080)
         print("Current resolution is {}".format(fmt))
         set_controls(camera)
-        time.sleep(1)
         frame = camera.capture(encoding = 'jpeg')
-        today = datetime.now()
-        d1 = today.strftime("%d/%m/%Y_%H:%M:%S")
-        image = png.from_array(frame.as_array())
-        image.save(d1+".png")
+        d1 = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+        path = "/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+d1+".jpg"
+        open(path, "wb")
+        frame.as_array.tofile(path)
+        
+        
+        
        
 
         # Release memory
