@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jun 11 11:50:20 2020
+
+@author: pi
+"""
+
 #creates .jpg file in Captures folder in SBCcode/Cameras/RPi_CameraServers/python/Captures
 #file is labelled with data and time when taken
 
@@ -19,7 +27,7 @@ def capture(camera):
     open(path, "wb")
     frame.as_array.tofile(path)
             #Remove frame from memory
-    del frame
+    
     
             
 if __name__ == "__main__":
@@ -33,7 +41,12 @@ if __name__ == "__main__":
             camera.set_control(v4l2.V4L2_CID_HFLIP,1)
             print("Current resolution is {}".format(fmt))
             set_controls(camera)
-            capture(camera)
+            frame = camera.capture(encoding = 'raw')
+            print(frame.as_array)
+            d1 = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+            path = "/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+d1+".raw"
+            open(path, "wb")
+            frame.as_array.tofile(path)
             print("Close camera...")
             camera.close_camera()
         except Exception as e:

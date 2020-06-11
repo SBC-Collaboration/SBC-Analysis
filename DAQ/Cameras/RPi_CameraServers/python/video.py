@@ -1,16 +1,14 @@
 import arducam_mipicamera as arducam
-import v4l2 #sudo pip install v4l2
+import v4l2 #sudo pip3 install v4l2
 import time
 import ctypes
-import numpy as np
 from datetime import datetime
-import os
 from capture import capture
 
 def set_controls(camera):
     try:
         print("Enable Auto Exposure...")
-        #camera.software_auto_exposure(enable = True)
+        camera.software_auto_exposure(enable = True)
         time.sleep(2)
         
     except Exception as e:

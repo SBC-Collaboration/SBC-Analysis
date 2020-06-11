@@ -19,6 +19,7 @@ def FOURCC(a, b, c, d):
 IMAGE_ENCODING_I420 = FOURCC('I', '4', '2', '0')
 IMAGE_ENCODING_JPEG = FOURCC('J', 'P', 'E', 'G')
 IMAGE_ENCODING_RAW_BAYER = FOURCC('R', 'A', 'W', ' ')
+IMAGE_ENCODING_PNG = FOURCC("P","N","G"," ")
 
 VIDEO_ENCODING_H264 = FOURCC('H', '2', '6', '4')
 
@@ -26,6 +27,7 @@ image_encodings = {
     'i420' : IMAGE_ENCODING_I420,
     'jpeg' : IMAGE_ENCODING_JPEG,
     'raw' : IMAGE_ENCODING_RAW_BAYER,
+    "png": IMAGE_ENCODING_PNG
 }
 video_encodings = {
     'h264' : VIDEO_ENCODING_H264,
