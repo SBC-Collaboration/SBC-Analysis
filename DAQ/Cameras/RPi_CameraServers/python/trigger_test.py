@@ -14,6 +14,7 @@ regs = [[0x4F00, 0x01],
         [0x302F, 0x7F],
         [0x3823, 0x30],
         [0x0100, 0x00],]
+
 camera = arducam.mipi_camera()
 camera.init_camera()
 print("camera open")
@@ -27,11 +28,9 @@ camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
 camera.set_control(v4l2.V4L2_CID_HFLIP,1)
 print("Start preview...")
 camera.start_preview(fullscreen = False, window = (0, 0, 1280, 720))
-time.sleep(10000)
+time.sleep(1000)
 camera.stop_preview()
-camera.close_camera()
-
-    
+camera.close_camera()    
 
     
         
