@@ -11,8 +11,8 @@ GPIO.setmode(GPIO.BOARD)
 GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
 while True:
     GPIO.output(36,1)
-    time.sleep(0.02)
+    time.sleep(0.00833)
     GPIO.output(36,0)
-    time.sleep(0.02)
+    time.sleep(0.00833)
      
     

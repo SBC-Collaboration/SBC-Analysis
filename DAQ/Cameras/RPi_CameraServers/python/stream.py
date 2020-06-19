@@ -36,27 +36,28 @@ if __name__ == "__main__":
 #        set_controls(camera)
         ls = [None]*100
         for i in range(100):
-            ls[i] = np.zeros((800,1280))
-        ringBuf = tuple(ls)
+            ls[i] = np.zeros((1280,800))
+#        ringBuf = tuple(ls)
         i = 0
         t_end = time.time()+1
-        while(time.time()<t_end):
+        while(True):
             try:
                 if(i==100):
                     i = 0
                 else:
                     frame = camera.capture(encoding="raw")
-                    buff1 = ringBuf[i]
-                    buff2= frame.as_array.reshape(800,1280)
+#                    buff1 = ringBuf[i]
+                    ls[i]= frame.as_array.reshape(800,1280)
+                    print(ls[i])
                     print("capture" +str(i))
-                    np.copyto(buff1,buff2)
+#                    np.copyto(buff1,buff2)
                     i = i+1
             except KeyboardInterrupt:
                 break
         camera.close_camera()
         print("camera close")
         for i in range(100):
-            im = Image.fromarray(ringBuf[i])
+            im = Image.fromarray(ls[i])
             im = im.convert("L")
             im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
         print("images saved")

@@ -28,7 +28,12 @@ camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
 camera.set_control(v4l2.V4L2_CID_HFLIP,1)
 print("Start preview...")
 camera.start_preview(fullscreen = False, window = (0, 0, 1280, 720))
-time.sleep(1000)
+cont = input("Press e to stop")
+if (cont == "e"):
+    print("Stop preview...")
+    camera.stop_preview()
+    print("Close camera...")
+    camera.close_camera()
 camera.stop_preview()
 camera.close_camera()    
 

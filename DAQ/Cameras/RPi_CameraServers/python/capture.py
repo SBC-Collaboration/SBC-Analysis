@@ -13,9 +13,9 @@ def set_controls(camera):
     except Exception as e:
         print(e)
 def capture(camera):
-    frame = camera.capture(encoding = 'raw')
+    frame = camera.capture(encoding = 'jpeg')
     d1 = datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
-    path = "/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+d1+".raw"
+    path = "/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+d1+".jpg"
     open(path, "wb")
     frame.as_array.tofile(path)
             #Remove frame from memory
@@ -33,6 +33,7 @@ if __name__ == "__main__":
             camera.set_control(v4l2.V4L2_CID_HFLIP,1)
             print("Current resolution is {}".format(fmt))
             set_controls(camera)
+            sleep(1)
             capture(camera)
             print("Close camera...")
             camera.close_camera()
