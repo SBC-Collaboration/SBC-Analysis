@@ -33,6 +33,8 @@ if __name__ == "__main__":
         camera.start_preview(fullscreen = False, window = (0, 0, 1280, 720))
         preview = True
         set_controls(camera)
+        camera.software_auto_exposure(enable=False)
+        camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
         cont = True
         d1 = datetime.now().strftime("%m-%d-%Y_%H:%M:%S")
         path = "/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Video/"+d1+".h264"

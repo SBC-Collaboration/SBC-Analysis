@@ -383,6 +383,8 @@ class mipi_camera(object):
             raise TypeError("Unknown image encoding type.")
         image_format = IMAGE_FORMAT(image_encodings[encoding], quality)
         return buffer(arducam_capture(self.camera_instance, byref(image_format), time_out))
+        
+    
 
     def set_raw_callback(self, func = None, userdata = None):
         '''
