@@ -3,7 +3,7 @@
 """
 Created on Sun Jun 14 20:03:02 2020
 
-@author: dvelasco
+@author: dvelasc0
 """
 import numpy as np
 from numpy import asarray
