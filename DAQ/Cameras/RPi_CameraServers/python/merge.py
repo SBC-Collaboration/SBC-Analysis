@@ -35,50 +35,49 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_HFLIP,1)
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)    
-        adc_threshold = 200
-        pix_threshold = 1000
+        adc_threshold = 240
+        pix_threshold = 10000
         ls = [None]*100
         for i in range(100):
-            ls[i] = np.zeros((1280,800))
-#        ringBuf = tuple(ls)
+            ls[i] = np.zeros((800,1280))
+        ringBuf = tuple(ls)
         background = ls[1]
         current = ls[1]
         i = 0
         t_end = time.time()+1
-        while(time.time() < t_end):
+        while(time.time()<t_end):
             try:
                 if(i==100):
-                    i = 0
+                    i = -1
                 else:
                     frame = camera.capture(encoding="raw")
-#                    buff1 = ringBuf[i]
-                    ls[i]= frame.as_array.reshape(800,1280)
-                    #print(ls[i])
-#                   np.copyto(buff1,buff2)
+                    buff1 = ringBuf[i]
+                    buff2= frame.as_array.reshape(800,1280)
+                    np.copyto(buff1,buff2)
                     if(i==0):
-                        background = ls[i]
+                        background = ringBuf[i]
                     else:
-                        current = ls[i]
+                        current = ringBuf[i]
                         abs_diff = np.abs(np.subtract(current,background)) 
                         counter = 0 
                         for row in abs_diff:
                             for pixel in row:
                                 if(pixel>adc_threshold):
                                     counter +=1
-                        if(counter>pix_threshold):
-                            im = Image.fromarray(current) 
-                            im.show()
-                            #GPIO.output(motion_trigger, GPIO.HIGH)
+                       #if(counter>pix_threshold):
+                        #   break
+                            #GPIO.output(motion_trigger, GPIO.HIGH)  
                         background = current
-                    i +=1
                     print("capture" +str(i))
+                    i +=1
+                   
                     
             except KeyboardInterrupt:
                 break
         camera.close_camera()
         print("camera close")
         for i in range(100):
-            im = Image.fromarray(ls[i])
+            im = Image.fromarray(ringBuf[i])
             im = im.convert("L")
             im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
         print("images saved")
