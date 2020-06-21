@@ -43,5 +43,6 @@ for i in range(6):
         if(counter>pix_threshold):
               im = Image.fromarray(current) 
               im.show()
-              #GPIO.output(motion_trigger, GPIO.HIGH)              
+              #GPIO.output(motion_trigger, GPIO.HIGH)
+        background = current
     i = i+1
