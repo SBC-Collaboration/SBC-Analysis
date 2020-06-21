@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jun 21 14:13:37 2020
-
-@author: pi
-"""
-
 import arducam_mipicamera as arducam
 import v4l2
 import numpy as np
@@ -62,7 +54,6 @@ if __name__ == "__main__":
 #                    buff1 = ringBuf[i]
                     ls[i]= frame.as_array.reshape(800,1280)
                     #print(ls[i])
-                    print("capture" +str(i))
 #                   np.copyto(buff1,buff2)
                     if(i==0):
                         background = ls[i]
@@ -79,6 +70,9 @@ if __name__ == "__main__":
                             im.show()
                             #GPIO.output(motion_trigger, GPIO.HIGH)
                         background = current
+                    i +=1
+                    print("capture" +str(i))
+                    
             except KeyboardInterrupt:
                 break
         camera.close_camera()
