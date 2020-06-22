@@ -6,6 +6,13 @@ import time
 import RPi.GPIO as GPIO
 
 
+#Question of exposure...would that resolve the speed issue? Currently, getting all black images in high light. 
+#skimage
+#PIL
+#opencv
+#astropy
+
+
 regs = [[0x4F00, 0x01],
         [0x3030, 0x04],
         [0x303F, 0x01],
@@ -45,7 +52,7 @@ if __name__ == "__main__":
         current = ls[1]
         i = 0
         t_end = time.time()+1
-        while(time.time()<t_end):
+        while(True):
             try:
                 if(i==100):
                     i = -1
@@ -65,7 +72,7 @@ if __name__ == "__main__":
                                 if(pixel>adc_threshold):
                                     counter +=1
                        #if(counter>pix_threshold):
-                        #   break
+                           #break
                             #GPIO.output(motion_trigger, GPIO.HIGH)  
                         background = current
                     print("capture" +str(i))
