@@ -21,8 +21,6 @@ def set_controls(camera):
         print(e)        
 if __name__ == "__main__":
     try:
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
         camera = arducam.mipi_camera()
         camera.init_camera()
         print("camera open")
@@ -41,23 +39,21 @@ if __name__ == "__main__":
         for i in range(100):
             ls[i] = np.zeros((800,1280))
         ringBuf = tuple(ls)
-        background = ls[1]
-        current = ls[1]
         i = 0
         t_end = time.time()+1
-        while(time.time()<t_end):
+        while(True):
             try:
                 if(i==100):
-                    i = -1
+                    i = 0
                 else:
                     frame = camera.capture(encoding="raw")
-                    buff1 = ringBuf[i]
-                    buff2= frame.as_array.reshape(800,1280)
-                    np.copyto(buff1,buff2)
+#                    buff1 = ringBuf[i]
+                    ls[i]= frame.as_array.reshape(800,1280)
+#                    np.copyto(buff1,buff2)
                     if(i==0):
-                        background = ringBuf[i]
+                        background = ls[i]
                     else:
-                        current = ringBuf[i]
+                        current = ls[i]
                         abs_diff = np.abs(np.subtract(current,background)) 
                         counter = 0 
                         for row in abs_diff:
@@ -77,7 +73,7 @@ if __name__ == "__main__":
         camera.close_camera()
         print("camera close")
         for i in range(100):
-            im = Image.fromarray(ringBuf[i])
+            im = Image.fromarray(ls[i])
             im = im.convert("L")
             im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
         print("images saved")
