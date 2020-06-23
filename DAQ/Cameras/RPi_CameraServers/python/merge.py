@@ -167,9 +167,11 @@ if __name__ == "__main__":
         adc_threshold = 3
         pix_threshold = 1 #15
         max_frames = 27
-        ls = np.zeros((max_frames,1280,800))
+        ls = [None]*100
+        for i in range(100):
+            ls[i] = np.zeros((800,1280))
 #      entries = range(1024000) # 1 million entries
-        results = np.zeros((1280,800)) # prefilled array
+        results = np.zeros((800,1280)) # prefilled array
         i = 0
         feature_detect = False 
         t_end = time.time()+1
@@ -192,7 +194,7 @@ if __name__ == "__main__":
                     i= -1
                 else:
                     frame = camera.capture(encoding="raw")
-                    ls[i]=frame.as_array.reshape(1280,800)
+                    ls[i]=frame.as_array.reshape(800,1280)
                     print(i)
                     i +=1
             except KeyboardInterrupt:
