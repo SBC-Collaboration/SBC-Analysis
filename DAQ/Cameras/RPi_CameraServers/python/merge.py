@@ -165,12 +165,13 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)
         adc_threshold = 3
-        pix_threshold = 15
+        pix_threshold = 1 #15
         max_frames = 27
         ls = np.zeros((max_frames,1280,800))
 #      entries = range(1024000) # 1 million entries
         results = np.zeros((1280,800)) # prefilled array
         i = 0
+        feature_detect = False 
         t_end = time.time()+1
         while(time.time()<t_end):
             try:
@@ -183,15 +184,11 @@ if __name__ == "__main__":
                             results = np.abs(np.subtract(background,current))
                             counter = np.count_nonzero(results>adc_threshold)
                             if(counter>pix_threshold):
-                                for i in range(max_frames):
-                                    im = Image.fromarray(ls[i])
-                                    im = im.convert("L")
-                                    im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
-                                    print("images saved")
-                            else:
-                                print("All Zeros") 
+                                feature_detect = True
+                                break
+                                #print("All Zeros") 
                             background = current
-                        print("capture" +str(j))
+                        #print("capture" +str(j))
                     i= -1
                 else:
                     frame = camera.capture(encoding="raw")
@@ -201,6 +198,12 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 break
         camera.close_camera()
+        if(feature_detect):
+            for i in range(max_frames):
+                im = Image.fromarray(ls[i])
+                im = im.convert("L")
+                im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
+                print("images saved")
         print("camera close")
     except KeyboardInterrupt:
         print("ending image capture")
