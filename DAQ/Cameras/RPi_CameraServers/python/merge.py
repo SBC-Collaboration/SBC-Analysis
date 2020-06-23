@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 22 15:09:22 2020
+Created on Mon Jun 22 
 
 @author: pi
 """
-
 import arducam_mipicamera as arducam
 import v4l2
 import numpy as np
@@ -13,6 +12,7 @@ from PIL import Image
 import time
 import RPi.GPIO as GPIO
 import ctypes
+import cv2
 
 regs = [[0x4F00, 0x01],
         [0x3030, 0x04],
@@ -166,35 +166,36 @@ if __name__ == "__main__":
 #        set_controls(camera)
         adc_threshold = 240
         pix_threshold = 10000
-        ls = [None]*100
-        for i in range(100):
+        ls = [None]*57
+        for i in range(57):
             ls[i] = np.zeros((1280,800))
-#        entries = range(1024000) # 1 million entries
+#      entries = range(1024000) # 1 million entries
         results = np.zeros((1280,800)) # prefilled array
         i = 0
         t_end = time.time()+1
         while(time.time()<t_end):
             try:
-                if(i==100):
-                    i = -1
+                if(i==57):
+                    for j in range(57):
+                        if(j==0):
+                            background = ls[j]
+                        else:
+                            current = ls[j]
+                            counter = 0 
+                            results = np.abs(cv2.subtract(current,background))
+                            out_arr = results[np.nonzero(results)]
+                            for entry in out_arr:
+                                if(entry>adc_threshold):
+                                    counter +=1
+                            if(counter>pix_threshold):
+                                break
+                                #GPIO.output(motion_trigger, GPIO.HIGH)  
+                            background = current
+                        print("capture" +str(j))
+                    i= -1
                 else:
                     frame = camera.capture(encoding="raw")
                     ls.append(frame.as_array.reshape(1280,800))
-                    if(i==0):
-                        background = ls[i]
-                    else:
-                        current = ls[i]
-                        counter = 0 
-                        results = np.abs(np.subtract(current,background))
-                        out_arr = results[np.nonzero(results)]
-                        for entry in out_arr:
-                            if(entry>adc_threshold):
-                                counter +=1
-                        if(counter>pix_threshold):
-                            break
-                            #GPIO.output(motion_trigger, GPIO.HIGH)  
-                        background = current
-                    print("capture" +str(i))
                     i +=1
             except KeyboardInterrupt:
                 break
