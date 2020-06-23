@@ -166,8 +166,9 @@ if __name__ == "__main__":
 #        set_controls(camera)
         adc_threshold = 240
         pix_threshold = 10000
-        ls = [None]*57
-        for i in range(57):
+        max_frames = 57
+        ls = [None]*max_frames
+        for i in range(max_frames):
             ls[i] = np.zeros((1280,800))
 #      entries = range(1024000) # 1 million entries
         results = np.zeros((1280,800)) # prefilled array
@@ -175,8 +176,8 @@ if __name__ == "__main__":
         t_end = time.time()+1
         while(time.time()<t_end):
             try:
-                if(i==57):
-                    for j in range(57):
+                if(i==max_frames):
+                    for j in range(max_frames):
                         if(j==0):
                             background = ls[j]
                         else:
@@ -201,5 +202,10 @@ if __name__ == "__main__":
                 break
         camera.close_camera()
         print("camera close")
+        for i in range(100):
+            im = Image.fromarray(ls[i])
+            im = im.convert("L")
+            im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
+        print("images saved")
     except KeyboardInterrupt:
         print("ending image capture")
