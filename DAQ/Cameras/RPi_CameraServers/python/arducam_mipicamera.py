@@ -344,6 +344,7 @@ class mipi_camera(object):
         )
         return _width.value, _height.value
 
+    # use mode 5 
     def set_mode(self, mode):
         check_status(
             arducam_set_mode(self.camera_instance, mode),

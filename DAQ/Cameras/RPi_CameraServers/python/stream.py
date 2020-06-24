@@ -21,22 +21,23 @@ def set_controls(camera):
         print(e)        
 if __name__ == "__main__":
     try:
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
+#        GPIO.setmode(GPIO.BOARD)
+#        GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
         camera = arducam.mipi_camera()
         camera.init_camera()
         print("camera open")
         camera.set_resolution(1280,800)
         print("res set")
-        for i in range(7):
-            camera.write_sensor_reg(regs[i][0],regs[i][1])
+        camera.set_mode(5)
+#        for i in range(7):
+#            camera.write_sensor_reg(regs[i][0],regs[i][1])
         camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
         camera.set_control(v4l2.V4L2_CID_HFLIP,1)
-        camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
+        camera.set_control(v4l2.V4L2_CID_EXPOSURE,1)
 #        set_controls(camera)
         ls = [None]*100
         for i in range(100):
-            ls[i] = np.zeros((1280,800))
+            ls[i] = np.zeros((800,1280))
 #        ringBuf = tuple(ls)
         i = 0
         t_end = time.time()+1
