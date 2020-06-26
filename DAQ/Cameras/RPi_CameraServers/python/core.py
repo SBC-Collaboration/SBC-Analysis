@@ -217,22 +217,20 @@ if __name__ == "__main__":
         for i in range(max_frames):
             frame = camera.capture(encoding="raw")
             ls[i]=frame.as_array.reshape(1280,800)
-            print(i)
+            #print(i)
        
         t.start()
         background = ls[0]
         current = ls[1]
         processes = []
-        for i in range(1,10):
-            p = multiprocessing.Process(target=multiprocessing_func, args=(background,current,adc_threshold))
-            processes.append(p)
-            p.start()
-       
+        p = multiprocessing.Process(target=multiprocessing_func, args=(background,current,adc_threshold))
+        processes.append(p)
+        p.start()
         for process in processes:
             process.join()
        
-        if(process>pix_threshold):
-            feature_detect = True
+        #if(process>pix_threshold):
+        #    feature_detect = True
         t.stop()
         camera.close_camera()
         if(feature_detect):
