@@ -206,13 +206,14 @@ if __name__ == "__main__":
             ls[i]=frame.as_array.reshape(1280,800)
             print(i)
         
-       
+        t.start()
         background = ls[0]
         current = ls[1]
         ##This is the problematic line......
-        results = np.abs(np.subtract(background,current))
-        t.start()
-        counter = np.count_nonzero(results>adc_threshold)
+        results = np.subtract(background,current)
+        counter1 = np.count_nonzero(results>adc_threshold)
+        counter2 = np.count_nonzero(results<-1*adc_threshold)
+        counter = counter1 + counter2
         if(counter>pix_threshold):
             feature_detect = True
         t.stop()
