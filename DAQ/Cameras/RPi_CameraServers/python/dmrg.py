@@ -10,9 +10,9 @@ import v4l2
 import numpy as np
 from PIL import Image
 import time
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import ctypes
-import cv2
+
 
 regs = [[0x4F00, 0x01],
         [0x3030, 0x04],
@@ -21,6 +21,29 @@ regs = [[0x4F00, 0x01],
         [0x302F, 0x7F],
         [0x3823, 0x30],
         [0x0100, 0x00],]
+#___________________________________________________________________________
+class TimerError(Exception):
+    """A custom exception used to report errors in use of Timer class"""
+
+class Timer:
+    def __init__(self):
+        self._start_time = None
+
+    def start(self):
+        """Start a new timer"""
+        if self._start_time is not None:
+            raise TimerError( f"Timer is running. Use .stop() to stop it")
+
+        self._start_time = time.perf_counter()
+
+    def stop(self):
+        """Stop the timer, and report the elapsed time"""
+        if self._start_time is None:
+            raise TimerError(f"Timer is not running. Use .start() to start it")
+
+        elapsed_time = time.perf_counter() - self._start_time
+        self._start_time = None
+        print(f"Elapsed time: {elapsed_time:0.4f} seconds")
  
 #_____________________________________________________________________________  
 class DynamicArray(object): 
@@ -151,10 +174,13 @@ def set_controls(camera):
 #______________________________________________________________________________
 if __name__ == "__main__":
     try:
+        t= Timer()
+        #t.start()
         #GPIO.setmode(GPIO.BOARD)
         #GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
         camera = arducam.mipi_camera()
         camera.init_camera()
+        camera.set_mode(5)
         print("camera open")
         camera.set_resolution(1280,800)
         print("res set")
@@ -165,38 +191,29 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)
         adc_threshold = 3
-        pix_threshold = 20 #15
-        max_frames = 27
-        ls = [None]*100
-        for i in range(100):
-            ls[i] = np.zeros((800,1280))
+        pix_threshold = 1 #15
+        max_frames = 2
+        ls = np.zeros((max_frames,1280,800))
 #      entries = range(1024000) # 1 million entries
-        results = np.zeros((800,1280)) # prefilled array
+        results = np.zeros((1280,800)) # prefilled array
         i = 0
-        feature_detect = False
-        arr = DynamicArray() 
-        t_end = time.time()+1
-        while(time.time()<t_end):
-            try:
-                if(i==max_frames):
-                    i= -1
-                else:
-                    frame = camera.capture(encoding="raw")
-                    ls[i]=frame.as_array.reshape(800,1280)
-                    # Append new element 
-                    arr.append(ls[i])
-                    if(i>=1):
-                        background = arr[i-1]
-                        current = arr[i]
-                        results = np.abs(np.subtract(background,current))
-                        counter = np.count_nonzero(results>adc_threshold)
-                        if(counter > pix_threshold):
-                            feature_detect = True
-                            break
-                    print(i)
-                    i +=1
-            except KeyboardInterrupt:
-                break
+        feature_detect = False 
+        #t_end = time.time()+1
+        #while(time.time()<t_end):
+         #   try:
+        for i in range(max_frames):
+            frame = camera.capture(encoding="raw")
+            ls[i]=frame.as_array.reshape(1280,800)
+            print(i)
+        
+        t.start()
+        background = ls[0]
+        current = ls[1]
+        results = np.abs(np.subtract(background,current))
+        counter = np.count_nonzero(results>adc_threshold)
+        if(counter>pix_threshold):
+            feature_detect = True
+        t.stop()
         camera.close_camera()
         if(feature_detect):
             for i in range(max_frames):
@@ -204,6 +221,5 @@ if __name__ == "__main__":
                 im = im.convert("L")
                 im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
                 print("images saved")
-        print("camera close")
     except KeyboardInterrupt:
-        print("ending image capture")
+        print("ending") 
