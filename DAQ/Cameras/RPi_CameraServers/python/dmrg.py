@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jun 22 
-
 @author: pi
 """
 import arducam_mipicamera as arducam
@@ -191,7 +190,7 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)
         adc_threshold = 3
-        pix_threshold = 1 #15
+        pix_threshold = 100 #15
         max_frames = 2
         ls = np.zeros((max_frames,1280,800))
 #      entries = range(1024000) # 1 million entries
@@ -209,8 +208,11 @@ if __name__ == "__main__":
         t.start()
         background = ls[0]
         current = ls[1]
-        results = np.abs(np.subtract(background,current))
-        counter = np.count_nonzero(results>adc_threshold)
+        ##This is the problematic line......
+        results = np.subtract(background,current)
+        counter1 = np.count_nonzero(results>adc_threshold)
+        counter2 = np.count_nonzero(results<-1*adc_threshold)
+        counter = counter1 + counter2
         if(counter>pix_threshold):
             feature_detect = True
         t.stop()
