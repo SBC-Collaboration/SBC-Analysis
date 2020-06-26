@@ -10,9 +10,9 @@ import v4l2
 import numpy as np
 from PIL import Image
 import time
-import RPi.GPIO as GPIO
+#import RPi.GPIO as GPIO
 import ctypes
-import cv2
+
 
 regs = [[0x4F00, 0x01],
         [0x3030, 0x04],
@@ -155,6 +155,7 @@ if __name__ == "__main__":
         #GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
         camera = arducam.mipi_camera()
         camera.init_camera()
+        camera.set_mode(5)
         print("camera open")
         camera.set_resolution(1280,800)
         print("res set")
@@ -166,12 +167,10 @@ if __name__ == "__main__":
 #        set_controls(camera)
         adc_threshold = 3
         pix_threshold = 1 #15
-        max_frames = 27
-        ls = [None]*100
-        for i in range(100):
-            ls[i] = np.zeros((800,1280))
+        max_frames = 120
+        ls = np.zeros((max_frames,1280,800))
 #      entries = range(1024000) # 1 million entries
-        results = np.zeros((800,1280)) # prefilled array
+        results = np.zeros((1280,800)) # prefilled array
         i = 0
         feature_detect = False 
         t_end = time.time()+1
@@ -194,7 +193,7 @@ if __name__ == "__main__":
                     i= -1
                 else:
                     frame = camera.capture(encoding="raw")
-                    ls[i]=frame.as_array.reshape(800,1280)
+                    ls[i]=frame.as_array.reshape(1280,800)
                     print(i)
                     i +=1
             except KeyboardInterrupt:
