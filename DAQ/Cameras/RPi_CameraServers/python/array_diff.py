@@ -205,19 +205,16 @@ if __name__ == "__main__":
             ls[i]=frame.as_array.reshape(1280,800)
             print(i)
         
-        #t.start()
+        t.start()
         background = ls[0]
         current = ls[1]
-        ##This is the problematic line......
-        t.start()
         results = np.subtract(background,current)
-        t.stop()
         counter1 = np.count_nonzero(results>adc_threshold)
         counter2 = np.count_nonzero(results<-1*adc_threshold)
         counter = counter1 + counter2
         if(counter>pix_threshold):
             feature_detect = True
-        #t.stop()
+        t.stop()
         camera.close_camera()
         if(feature_detect):
             for i in range(max_frames):
