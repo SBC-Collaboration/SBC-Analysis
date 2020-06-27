@@ -178,7 +178,7 @@ def worker_func(x,y):
     return np.count_nonzero(np.abs(np.subtract(x,y))>adc_threshold)
 
 def parallel_runs(a):
-    pool = multiprocessing.Pool(processes=4)
+    pool = multiprocessing.Pool(processes=1)
     prod_x= partial(worker_func, y= a[0]) # prod_x has only one argument x (y is fixed to 10)
     result = pool.map(prod_x, a)
     return result[1]
