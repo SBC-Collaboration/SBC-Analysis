@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jun 22 
-
 @author: pi
 """
 import arducam_mipicamera as arducam

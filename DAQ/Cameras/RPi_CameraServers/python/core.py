@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jun 26 16:06:13 2020
+<<<<<<< HEAD
+=======
 
+>>>>>>> 709e9adb773db212bb5f6b0ca0767ce083809990
 @author: dvelasco
 """
 
@@ -236,4 +239,8 @@ if __name__ == "__main__":
                 im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
                 print("images saved")
     except KeyboardInterrupt:
+<<<<<<< HEAD
         print("ending") 
+=======
+        print("ending") 
+>>>>>>> 709e9adb773db212bb5f6b0ca0767ce083809990
