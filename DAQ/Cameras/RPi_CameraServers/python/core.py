@@ -14,6 +14,9 @@ import time
 #import RPi.GPIO as GPIO
 import ctypes
 import multiprocessing
+from multiprocessing import RawArray
+from multiprocessing import Pool
+from functools import partial
 
 regs = [[0x4F00, 0x01],
         [0x3030, 0x04],
@@ -170,13 +173,16 @@ class DynamicArray(object):
 """
 for multi core processing
 """
-def diff_count(background,current,adc_threshold):
-    results = np.abs(np.subtract(background,current))
-    counter = np.count_nonzero(results>adc_threshold)
-    return counter
-   
-def multiprocessing_func(x,y,a):
-    diff_count(x,y,a)
+
+
+def worker_func(x,y):
+    return np.count_nonzero(np.abs(np.subtract(x,y))>adc_threshold)
+
+def parallel_runs(a):
+    pool = multiprocessing.Pool(processes=4)
+    prod_x= partial(worker_func, y= a[0]) # prod_x has only one argument x (y is fixed to 10)
+    result = pool.map(prod_x, a)
+    return result[1]
 
 #______________________________________________________________________________
 def set_controls(camera):
@@ -218,19 +224,9 @@ if __name__ == "__main__":
             frame = camera.capture(encoding="raw")
             ls[i]=frame.as_array.reshape(1280,800)
             #print(i)
-       
         t.start()
-        background = ls[0]
-        current = ls[1]
-        processes = []
-        p = multiprocessing.Process(target=multiprocessing_func, args=(background,current,adc_threshold))
-        processes.append(p)
-        p.start()
-        for process in processes:
-            process.join()
-       
-        #if(process>pix_threshold):
-        #    feature_detect = True
+        if(parallel_runs(ls)>pix_threshold):
+            feature_detect = True
         t.stop()
         camera.close_camera()
         if(feature_detect):
