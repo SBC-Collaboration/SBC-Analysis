@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jun 22 
+Created on Mon Jun 29 12:06:12 2020
+
 @author: pi
 """
+
 import arducam_mipicamera as arducam
 import v4l2
 import numpy as np
@@ -189,13 +191,12 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_HFLIP,1)
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)
-        adc_threshold1 = np.uint8(3)
-        adc_threshold2 = np.uint8(252)
-        pix_threshold = 199 #15
+        adc_threshold = 3
+        pix_threshold = 1 #15
         max_frames = 2
-        ls = np.zeros((max_frames,1280,800),dtype=np.uint8)
+        ls = np.zeros((max_frames,1280,800))
 #      entries = range(1024000) # 1 million entries
-        results = np.zeros((1280,800),dtype=np.uint8) # prefilled array
+        results = np.zeros((1280,800)) # prefilled array
         i = 0
         feature_detect = False 
         #t_end = time.time()+1
@@ -204,31 +205,9 @@ if __name__ == "__main__":
         for i in range(max_frames):
             frame = camera.capture(encoding="raw")
             ls[i]=frame.as_array.reshape(1280,800)
-            
-            
             print(i)
-        
-        
-        background = ls[0]
-        current = ls[1]
-        print(ls[1].dtype)
-        t.start()
-        results= np.subtract(background,current)
-        t.stop()
-        t.start()
-        counter = (results>adc_threshold1).sum()
-#        counter2 = np.count_nonzero(results<adc_threshold2)
-        t.stop()
-#        counter = counter1 + counter2
-        if(counter>pix_threshold):
-            feature_detect = True
-        
         camera.close_camera()
-        if(feature_detect):
-            for i in range(max_frames):
-                im = Image.fromarray(ls[i])
-                im = im.convert("L")
-                im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
-                print("images saved")
     except KeyboardInterrupt:
         print("ending") 
+            
+
