@@ -39,9 +39,7 @@ if __name__=="__main__":
     adc_threshold1 = np.uint8(3)
     pix_threshold = 199 #15
     max_frames = 100
-    ls = [None]*100
-    for i in range(100):
-        ls[i] = np.zeros((800,1280),dtype=np.uint8)
+    ls = np.zeros((max_frames,800,1280),dtype=np.uint8)
     results = np.zeros((800,1280),dtype=np.uint8)
     background = np.zeros((800,1280),dtype=np.uint8)
     current = np.zeros((800,1280),dtype=np.uint8)# prefilled array
@@ -61,11 +59,12 @@ if __name__=="__main__":
 #                    np.copyto(buff1,buff2)
                 if(i==0):
                     background = ls[0]
+                    print("here")
                 else:
                     current=ls[i]
                     t_start = time.time()
                     print("this")
-                    np.subtract(background,current,out=results)
+                    results = np.subtract(background,current)
                     print(time.time()-t_start)
                     t_start=time.time()
             #        counter = (results>adc_threshold1).sum()
@@ -77,6 +76,7 @@ if __name__=="__main__":
                     
                     if(counter>pix_threshold):
                         break
+                    background = current
                 i+=1
         except KeyboardInterrupt:
             break
