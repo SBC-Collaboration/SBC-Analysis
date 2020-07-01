@@ -11,6 +11,7 @@ from PIL import Image
 import time
 #import RPi.GPIO as GPIO
 import ctypes
+from count import count_above
 
 
 regs = [[0x4F00, 0x01],
@@ -21,28 +22,9 @@ regs = [[0x4F00, 0x01],
         [0x3823, 0x30],
         [0x0100, 0x00],]
 #___________________________________________________________________________
-class TimerError(Exception):
-    """A custom exception used to report errors in use of Timer class"""
 
-class Timer:
-    def __init__(self):
-        self._start_time = None
 
-    def start(self):
-        """Start a new timer"""
-        if self._start_time is not None:
-            raise TimerError( f"Timer is running. Use .stop() to stop it")
 
-        self._start_time = time.perf_counter()
-
-    def stop(self):
-        """Stop the timer, and report the elapsed time"""
-        if self._start_time is None:
-            raise TimerError(f"Timer is not running. Use .start() to start it")
-
-        elapsed_time = time.perf_counter() - self._start_time
-        self._start_time = None
-        print(f"Elapsed time: {elapsed_time:0.4f} seconds")
  
 #_____________________________________________________________________________  
 class DynamicArray(object): 
@@ -171,9 +153,9 @@ def set_controls(camera):
     except Exception as e:
         print(e)        
 #______________________________________________________________________________
-if __name__ == "__main__":
+def diff():
     try:
-        t= Timer()
+        
         #t.start()
         #GPIO.setmode(GPIO.BOARD)
         #GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
@@ -190,7 +172,7 @@ if __name__ == "__main__":
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
 #        set_controls(camera)
         adc_threshold1 = np.uint8(3)
-        adc_threshold2 = np.uint8(252)
+        adc_threshold2 = np.int16(-3)
         pix_threshold = 199 #15
         max_frames = 2
         ls = np.zeros((max_frames,1280,800),dtype=np.uint8)
@@ -212,14 +194,16 @@ if __name__ == "__main__":
         background = ls[0]
         current = ls[1]
         print(ls[1].dtype)
-        t.start()
+        t_start = time.time()
         results= np.subtract(background,current)
-        t.stop()
-        t.start()
-        counter = (results>adc_threshold1).sum()
-#        counter2 = np.count_nonzero(results<adc_threshold2)
-        t.stop()
-#        counter = counter1 + counter2
+        print(time.time()-t_start)
+        t_start=time.time()
+#        counter = (results>adc_threshold1).sum()
+        counter1 = count_above(results,adc_threshold1)
+#        counter1 = (results>adc_threshold1).sum()
+#        counter2 = (results<adc_threshold2).sum()
+        print(time.time()-t_start)
+        counter = counter1
         if(counter>pix_threshold):
             feature_detect = True
         
@@ -232,3 +216,5 @@ if __name__ == "__main__":
                 print("images saved")
     except KeyboardInterrupt:
         print("ending") 
+if __name__=="__main__":
+    diff()
