@@ -44,8 +44,6 @@ if __name__=="__main__":
     #    ls[i] = np.zeros((800,1280),dtype=np.uint8)
     ls = np.zeros((max_frames,800,1280), dtype = np.uint8)
     results = np.zeros((800,1280),dtype=np.uint8)
-    background = np.zeros((800,1280),dtype=np.uint8)
-    current = np.zeros((800,1280),dtype=np.uint8)# prefilled array
     i = 0
     feature_detect = False
     loop=0
