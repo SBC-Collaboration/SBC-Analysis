@@ -36,8 +36,8 @@ if __name__=="__main__":
     camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
     camera.set_control(v4l2.V4L2_CID_HFLIP,1)
     camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
-    adc_threshold1 = np.uint8(3)
-    pix_threshold = 199 #15
+    #adc_threshold = np.uint8(3)
+    pix_threshold = 100000 #15
     max_frames = 100
     #ls = [None]*100
     #for i in range(100):
@@ -67,7 +67,11 @@ if __name__=="__main__":
                     print(time.time()-t_start)
                     t_start=time.time()
             #        counter = (results>adc_threshold1).sum()
-                    counter1 = count_above(results,adc_threshold1)
+                    t_start=time.time()    
+                    adc_threshold = np.uint8(np.sqrt(np.mean(ls[i-1])))     
+                    print(time.time()-t_start)
+                    t_start=time.time()
+                    counter1 = count_above(results,adc_threshold)
             #        counter1 = (results>adc_threshold1).sum()
             #        counter2 = (results<adc_threshold2).sum()
                     print(time.time()-t_start)
