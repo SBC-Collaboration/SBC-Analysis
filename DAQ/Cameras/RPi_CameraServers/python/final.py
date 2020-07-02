@@ -40,10 +40,10 @@ if __name__=="__main__":
     adc_threshold1 = np.uint8(3)
     pix_threshold = 199 #15
     max_frames = 100
-    ls = [None]*100
-    for i in range(100):
-        ls[i] = np.zeros((800,1280),dtype=np.uint8)
-#    ls = np.zeros((max_frames,800,1280),dtype=np.uint8)
+#    ls = [None]*100
+#    for i in range(100):
+#        ls[i] = np.zeros((800,1280),dtype=np.uint8)
+    ls = np.zeros((max_frames,800,1280),dtype=np.uint8)
     results = np.zeros((800,1280),dtype=np.uint8)
     background = np.zeros((800,1280),dtype=np.uint8)
     current = np.zeros((800,1280),dtype=np.uint8)# prefilled array
@@ -54,22 +54,28 @@ if __name__=="__main__":
     loop=0
     t_end=time.time()+1
     frame= camera.capture(encoding="raw")
-    
-    while(True):
+    frame.buffer_ptr[0].data=bf[0]
+    while(time.time()<=t_end):
         try:
             if(i==100):
                 i = 0
             else:
-#                t_start=time.time()
+                t_start=time.time()
                 frame = camera.capture(encoding="raw")
-                print(frame.buffer_ptr[0].data)
-                print(addressof(frame.buffer_ptr.contents))
-#                print(time.time()-t_start)
-#                t_start = time.time()
-                
-                ls[i]=frame.as_array.reshape(800,1280)
+#                print(addressof(frame.buffer_ptr[0].data))
+#                print(frame.buffer_ptr[0].data)
+#                print(addressof(frame.buffer_ptr.contents))
+                print(time.time()-t_start)
+                t_start = time.time()
+#                if(i==99):
+#                    frame.buffer_ptr[0].data=bf[0]
+#                else:
+#                    frame.buffer_ptr[0].data=bf[i+1]
+#                ls[i]=frame.as_array.reshape(800,1280)
+                ls[i]=np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
+#                print(addressof(bf[i]),addressof(frame.buffer_ptr[0].data))
                 del frame
-#                print(time.time()-t_start)
+                print(time.time()-t_start)
                 print("capture" +str(i))
 #                if(i==0):
 #                    t_start=time.time()
