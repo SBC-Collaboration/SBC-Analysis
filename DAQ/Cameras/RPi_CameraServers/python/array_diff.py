@@ -153,68 +153,24 @@ def set_controls(camera):
     except Exception as e:
         print(e)        
 #______________________________________________________________________________
-def diff():
-    try:
+def diff(background,current,thresh,results):
+    
         
         #t.start()
         #GPIO.setmode(GPIO.BOARD)
         #GPIO.setup(36,GPIO.OUT,initial=GPIO.LOW)
-        camera = arducam.mipi_camera()
-        camera.init_camera()
-        camera.set_mode(5)
-        print("camera open")
-        camera.set_resolution(1280,800)
-        print("res set")
-        #for i in range(7):
-         #   camera.write_sensor_reg(regs[i][0],regs[i][1])
-        camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
-        camera.set_control(v4l2.V4L2_CID_HFLIP,1)
-        camera.set_control(v4l2.V4L2_CID_EXPOSURE,4)
-#        set_controls(camera)
-        adc_threshold1 = np.uint8(3)
-        adc_threshold2 = np.int16(-3)
-        pix_threshold = 199 #15
-        max_frames = 2
-        ls = np.zeros((max_frames,1280,800),dtype=np.uint8)
-#      entries = range(1024000) # 1 million entries
-        results = np.zeros((1280,800),dtype=np.uint8) # prefilled array
-        i = 0
-        feature_detect = False 
-        #t_end = time.time()+1
-        #while(time.time()<t_end):
-         #   try:
-        for i in range(max_frames):
-            frame = camera.capture(encoding="raw")
-            ls[i]=frame.as_array.reshape(1280,800)
-            
-            
-            print(i)
         
         
-        background = ls[0]
-        current = ls[1]
-        print(ls[1].dtype)
-        t_start = time.time()
-        results= np.subtract(background,current)
-        print(time.time()-t_start)
-        t_start=time.time()
+    t_start = time.time()
+    np.subtract(background,current,out=results)
+    print(time.time()-t_start)
+    t_start=time.time()
 #        counter = (results>adc_threshold1).sum()
-        counter1 = count_above(results,adc_threshold1)
+    counter1 = count_above(results,thresh)
 #        counter1 = (results>adc_threshold1).sum()
 #        counter2 = (results<adc_threshold2).sum()
-        print(time.time()-t_start)
-        counter = counter1
-        if(counter>pix_threshold):
-            feature_detect = True
+    print(time.time()-t_start)
+    return counter1
         
-        camera.close_camera()
-        if(feature_detect):
-            for i in range(max_frames):
-                im = Image.fromarray(ls[i])
-                im = im.convert("L")
-                im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
-                print("images saved")
-    except KeyboardInterrupt:
-        print("ending") 
-if __name__=="__main__":
-    diff()
+        
+        

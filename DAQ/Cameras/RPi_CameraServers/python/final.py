@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 import time
 #import RPi.GPIO as GPIO
+from ctypes import *
 import ctypes
 from count import count_above
 
@@ -39,47 +40,55 @@ if __name__=="__main__":
     adc_threshold1 = np.uint8(3)
     pix_threshold = 199 #15
     max_frames = 100
-#    ls = [np.zeros((800,1280),dtype=np.uint8)]
-#    for i in range(99):
-#        ls.append(np.zeros((800,1280),dtype=np.uint8))
-    ls = np.zeros((max_frames,800,1280),dtype=np.uint8)
+    ls = [None]*100
+    for i in range(100):
+        ls[i] = np.zeros((800,1280),dtype=np.uint8)
+#    ls = np.zeros((max_frames,800,1280),dtype=np.uint8)
     results = np.zeros((800,1280),dtype=np.uint8)
     background = np.zeros((800,1280),dtype=np.uint8)
     current = np.zeros((800,1280),dtype=np.uint8)# prefilled array
     i = 0
     feature_detect = False
+    bu = (c_ubyte*1024000) * 100 
+    bf = bu()
     loop=0
     t_end=time.time()+1
-    while(time.time()<t_end):
+    frame= camera.capture(encoding="raw")
+    
+    while(True):
         try:
             if(i==100):
                 i = 0
             else:
-                t_start=time.time()
+#                t_start=time.time()
                 frame = camera.capture(encoding="raw")
-                print(time.time()-t_start)
-                t_start = time.time()
+                print(frame.buffer_ptr[0].data)
+                print(addressof(frame.buffer_ptr.contents))
+#                print(time.time()-t_start)
+#                t_start = time.time()
+                
                 ls[i]=frame.as_array.reshape(800,1280)
-                print(time.time()-t_start)
+                del frame
+#                print(time.time()-t_start)
                 print("capture" +str(i))
-                if(i==0):
-                    t_start=time.time()
-                    background = ls[0]
-                    print(time.time()-t_start)
-                else:
-                    t_start=time.time()
-                    current=ls[i]
-                    print(time.time()-t_start)
-                    t_start=time.time()
-                    results = np.subtract(background,current)
-                    print(time.time()-t_start)
-                    t_start=time.time()
-                    counter1 = count_above(results,adc_threshold1)
-                    print(time.time()-t_start)
-#                    if(counter1>pix_threshold):
-                    t_start=time.time()
-                    background = current
-                    print(time.time()-t_start)
+#                if(i==0):
+#                    t_start=time.time()
+#                    background = ls[0]
+#                    print(time.time()-t_start)
+#                else:
+#                    t_start=time.time()
+#                    current=ls[i]
+#                    print(time.time()-t_start)
+#                    t_start=time.time()
+#                    np.subtract(background,current,out=results)
+#                    print(time.time()-t_start)
+#                    t_start=time.time()
+#                    counter1 = count_above(results,adc_threshold1)
+#                    print(time.time()-t_start)
+##                    if(counter1>pix_threshold):
+#                    t_start=time.time()
+#                    background = current
+#                    print(time.time()-t_start)
                 i+=1
         except KeyboardInterrupt:
             break
