@@ -24,7 +24,7 @@ regs = [[0x4F00, 0x01],
         [0x0100, 0x00],]
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     camera = arducam.mipi_camera()
     camera.init_camera()
     
@@ -74,6 +74,7 @@ if __name__=="__main__":
 #                ls[i]=frame.as_array.reshape(800,1280)
                 ls[i]=np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
 #                print(addressof(bf[i]),addressof(frame.buffer_ptr[0].data))
+                
                 del frame
                 print(time.time()-t_start)
                 print("capture" +str(i))
@@ -104,3 +105,7 @@ if __name__=="__main__":
         im = im.convert("L")
         im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
     print("images saved")
+
+
+
+
