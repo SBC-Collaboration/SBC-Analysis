@@ -18,7 +18,7 @@ from count import count_above
 from multiprocessing import Process
 import time
 #import ray
-
+import threading
 #ray.init()
 
 i=0
@@ -30,6 +30,7 @@ camera = arducam.mipi_camera()
 done1= False
 done2=False
 
+start_proc = threading.Event()
 counter =0
 loop=0
 
@@ -52,12 +53,13 @@ def capture():
         camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
         camera.set_control(v4l2.V4L2_CID_HFLIP,1)
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,1)
-    done1= True    
+    
+    start_proc.set()
     frame = camera.capture(encoding="raw")
     print(frame.as_array)
     print(i)
     ls[i] = np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
-    done1 = False
+    
     
 #@ray.remote
 def proc():
@@ -69,40 +71,42 @@ def proc():
     global done2
     global done1
     print("start2")
+#    current=2
+#    while(True):
+#        print(done2)
+#        if(i>current):
+#            np.subtract(ls[i-1],ls[i-2],out=results)
+#            counter = count_above(results, adc_threshold1)
+#            print("done",counter)
+#            current = i
+#            done2=True
     while(True):
-        if(done1):
-            np.subtract(ls[i-1],ls[i-2],out=results)
-            counter = count_above(results, adc_threshold1)
-            done2 = True
-            print("done",counter)
-    
+        start_proc.wait()
+        np.subtract(ls[i-1],ls[i-2],out=results)
+        counter = count_above(results, adc_threshold1)
+        print("done",counter)
+        start_proc.clear()
+        
 if __name__=="__main__":
     
     capture()
     i+=1
     capture()
     i+=1
-    
+#    
     t_end = time.time()+1
-    p2 = Process(target=proc)
-    p2.start()
+#    p2 = Process(target=proc)
+#    p2.start()
+    p2 = threading.Thread(target=proc).start()
     while(time.time()<=t_end):
         try:
             if(i==100):
                 i=0
                 loop+=1
+            
             capture()
-#            t_start = time.time()
-#            p2 = Process(target=proc)
-#            p2.start()
-#            capture()
-#            while(not done1 and not done2):
-#                1+2
-#            done1 = False
-#            done2=False
-#    #        ray.get([capture.remote(),proc.remote()])
-            if counter>pix_threshold:
-                break
+#            if counter>pix_threshold:
+#                break
             i+=1
 #            print(time.time()-t_start)
         except KeyboardInterrupt:

@@ -33,8 +33,9 @@ camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
 camera.set_control(v4l2.V4L2_CID_HFLIP,1)
 camera.set_control(v4l2.V4L2_CID_EXPOSURE,1)
 
-def cap(input_data):
-    i = input_data
+def cap(i,camera,ls):
+    
+    i,camera,ls=i,camera,ls
     frame = camera.capture(encoding="raw")
     ls[i] = np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
     background = ls[i-2]
@@ -61,12 +62,12 @@ if __name__ == "__main__":
     i = 2
     cont = True
     while cont:
-        stage1 = mpipe.OrderedStage(cap, 3)
-        stage2 = mpipe.OrderedStage(processing, 3)
+        stage1 = mpipe.OrderedStage(cap, 1)
+        stage2 = mpipe.OrderedStage(processing, 1)
         pipe = mpipe.Pipeline(stage1.link(stage2))
         
-        pipe.put(i)
-        pipe.put(None)
+        pipe.put(i,camera,ls)
+        
         if(i==100):
             i=0
         else:
