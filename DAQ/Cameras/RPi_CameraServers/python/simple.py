@@ -65,8 +65,10 @@ def capture():
         camera.set_control(v4l2.V4L2_CID_VFLIP, 1)
         camera.set_control(v4l2.V4L2_CID_HFLIP,1)
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,1)
-    
-    start_proc.set()
+    if(i<2 and loop==0):
+        pass
+    else:
+        start_proc.set()
     frame = camera.capture(encoding="raw")
     ls[i] = np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
     
