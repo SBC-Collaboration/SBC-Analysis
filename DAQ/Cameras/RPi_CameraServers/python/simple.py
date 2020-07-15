@@ -11,7 +11,7 @@ import v4l2
 import numpy as np
 from PIL import Image
 from time import sleep
-#import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 from ctypes import *
 import ctypes
 from count import count_above
@@ -19,6 +19,7 @@ from multiprocessing import Process
 import time
 #import ray
 import threading
+import json
 #ray.init()
 
 i=0
@@ -27,12 +28,23 @@ results = np.zeros((800,1280),dtype=np.uint8)
 adc_threshold1 = np.uint8(10)
 pix_threshold = np.uint8(199)
 camera = arducam.mipi_camera()
-done1= False
-done2=False
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(7,GPIO.IN)
+GPIO.setup(8,GPIO.OUT)
+GPIO.setup(9,GPIO.OUT)
 
 start_proc = threading.Event()
+next_frame = threading.Event()
+start_cap = threading.Event()
+
 counter =0
 loop=0
+
+def wait_sig():
+    while(True):
+        if(GPIO.input(7)):
+            start_cap.set()
+            break
 
 #@ray.remote
 def capture():
@@ -56,8 +68,6 @@ def capture():
     
     start_proc.set()
     frame = camera.capture(encoding="raw")
-    print(frame.as_array)
-    print(i)
     ls[i] = np.ctypeslib.as_array(frame.buffer_ptr[0].data,shape=(800,1280))
     
     
@@ -68,8 +78,6 @@ def proc():
     global results
     global adc_threshold1
     global counter
-    global done2
-    global done1
     print("start2")
 #    current=2
 #    while(True):
@@ -86,34 +94,57 @@ def proc():
         counter = count_above(results, adc_threshold1)
         print("done",counter)
         start_proc.clear()
+        next_frame.set()
         
-if __name__=="__main__":
-    
-    capture()
-    i+=1
-    capture()
-    i+=1
-#    
+if __name__=="__main__":        
     t_end = time.time()+1
-#    p2 = Process(target=proc)
-#    p2.start()
     p2 = threading.Thread(target=proc).start()
-    while(time.time()<=t_end):
-        try:
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(7,GPIO.IN)
+    GPIO.setup(8,GPIO.IN)
+    GPIO.setup(9,GPIO.OUT)
+    while(True):
+        i=0
+        capture()
+        i+=1
+        capture()
+        i+=1
+        with open("config.JSON") as config_file:
+            data = json.load(config_file)
+        camera.set_control(v4l2.V4L2_CID_EXPOSURE,data["exposure"])
+        adc_threshold1 = data["adc_threshold"]
+        pix_threshold = data["pix_threshold"]
+        frames_after = data["frames_after"]
+        print("Waiting to begin capture")
+        wait_sig()
+        start_cap.wait()
+        start_cap.clear()
+        while(True):
+            try:
+                if(GPIO.input(8)):
+                    break
+                if(i==100):
+                    i=0
+                    loop+=1
+                
+                capture()
+                if counter>pix_threshold:
+                    GPIO.output(9,1)
+                    print("Detected motion on frame " + str(i))
+                next_frame.wait()
+                next_frame.clear()
+                i+=1
+
+            except KeyboardInterrupt:
+                break
+        for j in range(frames_after):
+            i+=1
             if(i==100):
                 i=0
-                loop+=1
-            
             capture()
-#            if counter>pix_threshold:
-#                break
-            i+=1
-#            print(time.time()-t_start)
-        except KeyboardInterrupt:
-            break
-    camera.close_camera()
-    for i in range(100):
-        im = Image.fromarray(ls[i])
-        im = im.convert("L")
-        im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
-    print("images saved")
+        camera.close_camera()      
+        for i in range(100):
+            im = Image.fromarray(ls[i])
+            im = im.convert("L")
+            im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
+        print("images saved")
