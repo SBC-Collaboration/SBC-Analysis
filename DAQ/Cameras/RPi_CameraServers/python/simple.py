@@ -30,8 +30,9 @@ pix_threshold = np.uint8(199)
 camera = arducam.mipi_camera()
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(7,GPIO.IN)
-GPIO.setup(8,GPIO.OUT)
-GPIO.setup(9,GPIO.OUT)
+GPIO.setup(8,GPIO.IN)
+GPIO.setup(9,GPIO.OUT,initial-GPIO.LOW)
+GPIO.setup(10,GPIO.OUT,initial=GPIO.LOW)
 
 start_proc = threading.Event()
 next_frame = threading.Event()
@@ -51,7 +52,6 @@ def capture():
     global ls
     global camera
     global i
-    global done1
     global loop
     print("start1")
     if(i==0 and loop==0):
@@ -78,16 +78,6 @@ def proc():
     global results
     global adc_threshold1
     global counter
-    print("start2")
-#    current=2
-#    while(True):
-#        print(done2)
-#        if(i>current):
-#            np.subtract(ls[i-1],ls[i-2],out=results)
-#            counter = count_above(results, adc_threshold1)
-#            print("done",counter)
-#            current = i
-#            done2=True
     while(True):
         start_proc.wait()
         np.subtract(ls[i-1],ls[i-2],out=results)
@@ -99,26 +89,25 @@ def proc():
 if __name__=="__main__":        
     t_end = time.time()+1
     p2 = threading.Thread(target=proc).start()
-    GPIO.setmode(GPIO.BOARD)
-    GPIO.setup(7,GPIO.IN)
-    GPIO.setup(8,GPIO.IN)
-    GPIO.setup(9,GPIO.OUT)
     while(True):
         i=0
-        capture()
-        i+=1
-        capture()
-        i+=1
+        print("Waiting to begin capture")
+        threading.Thread(target=wait_sig).start()
+        start_cap.wait()
+        start_cap.clear()
+        print("Loading settings")
         with open("config.JSON") as config_file:
             data = json.load(config_file)
         camera.set_control(v4l2.V4L2_CID_EXPOSURE,data["exposure"])
         adc_threshold1 = data["adc_threshold"]
         pix_threshold = data["pix_threshold"]
         frames_after = data["frames_after"]
-        print("Waiting to begin capture")
-        wait_sig()
-        start_cap.wait()
-        start_cap.clear()
+        print("Loaded settings")
+        GPIO.output(10,1)
+        capture()
+        i+=1
+        capture()
+        i+=1
         while(True):
             try:
                 if(GPIO.input(8)):
@@ -137,6 +126,7 @@ if __name__=="__main__":
 
             except KeyboardInterrupt:
                 break
+        
         for j in range(frames_after):
             i+=1
             if(i==100):
@@ -148,3 +138,4 @@ if __name__=="__main__":
             im = im.convert("L")
             im.save("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/"+str(i)+".png")
         print("images saved")
+        GPIO.output(10,0)
