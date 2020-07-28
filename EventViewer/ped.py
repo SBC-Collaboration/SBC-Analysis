@@ -813,7 +813,6 @@ class Application(tk.Frame):
             ind = [[(str(i[0]) + '_' + str(i[1])) == date[0] for i in self.reco_events['runid']], 
                     list(np.equal(self.reco_events['ev'], date[1]))]
             ind = np.argwhere([ind[0][i] & ind[1][i] for i in range(len(ind[0]))])[0][0]
-            print(ind, self.row_index)
             for k,v in self.reco_events.items():
                 self.reco_row[k] = v[ind]
         if ibub:
@@ -1234,8 +1233,13 @@ class Application(tk.Frame):
 
     def draw_PMT_traces(self, PMT_data, align_data):
         n = self.n_PMT_trig.get()
-        f = matplotlib.pyplot.Figure(figsize=(9, 3), dpi=100)
-        a = f.add_subplot(111)
+        if self.add_coarse_pmt_traces_var.get():
+            f = matplotlib.pyplot.Figure(figsize=(9, 6), dpi=100)
+            a = f.add_subplot(211)
+            b = f.add_subplot(212)
+        else:
+            f = matplotlib.pyplot.Figure(figsize=(9, 3), dpi=100)
+            a = f.add_subplot(111)
         if PMT_data is None:
             logger.error("PMT_data not found.")
             return
@@ -1244,8 +1248,8 @@ class Application(tk.Frame):
         xd = np.arange(PMT_data["traces"].shape[2]) * PMT_data["dt"][n, 0]
         yd_fine = PMT_data["traces"][n, 0, :] * PMT_data["v_scale"][n, 0] + \
                   PMT_data["v_offset"][n, 0]
-        # yd_coarse = PMT_data["traces"][n, 1, :] * PMT_data["v_scale"][n, 1] + \
-        #             PMT_data["v_offset"][n, 1]
+        yd_coarse = PMT_data["traces"][n, 1, :] * PMT_data["v_scale"][n, 1] + \
+                    PMT_data["v_offset"][n, 1]
         if align_data is not None:
             trace_t0_sec = PMT_data["t0_sec"][n, 0]
             trace_t0_frac = PMT_data["t0_frac"][n, 0]
@@ -1260,7 +1264,12 @@ class Application(tk.Frame):
         a.plot(xd, yd_fine, 'b')
         a.set_xlabel("[s]")
         a.set_ylabel("PMT Amplitude [mV]")
-        a.set_title(str(self.run)+' '+str(self.event)+' PMT Trace at t0 = {}'.format(self.t0))
+        a.set_title(str(self.run)+' '+str(self.event)+' PMT Trace at t0 = {:.6f}'.format(self.t0))
+        if self.add_coarse_pmt_traces_var.get():
+            b.plot(xd, yd_coarse, 'b')
+            b.set_xlabel("[s]")
+            b.set_ylabel("PMT Amplitude [mV]")
+            b.set_title(str(self.run)+' '+str(self.event)+' PMT Trace at t0 = {:.6f}'.format(self.t0))
         self.place_graph_and_toolbar(figure=f, master=self.pmt_graph_frame)
         return
 
@@ -1766,6 +1775,10 @@ class Application(tk.Frame):
                                                           variable = self.draw_pmt_traces_var,
                                                           command = self.load_PMT_traces)
         self.draw_pmt_traces_checkbutton.grid(row=0, column=0, sticky=tk.N)
+        
+        self.add_coarse_pmt_traces_var = tk.BooleanVar(value=0)
+        self.add_coarse_pmt_traces_checkbutton = tk.Checkbutton(master=self.pmt_settings_frame, text="Add Coarse PMT", variable = self.add_coarse_pmt_traces_var, command = self.load_PMT_traces)
+        self.add_coarse_pmt_traces_checkbutton.grid(row=1, column=0, sticky=tk.N)
         
         # slow tab
         self.slow_tab_left = tk.Frame(self.slow_tab, bd=5, relief=tk.SUNKEN)
