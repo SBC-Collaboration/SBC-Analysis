@@ -1,8 +1,3 @@
-typedef struct t  {
-    unsigned long tStart;
-    unsigned long tTimeout;
-};
-
 typedef struct square_wave {
     unsigned long period;
     unsigned long phase;
@@ -17,17 +12,12 @@ typedef struct square_wave {
 //pin = 37 
 struct square_wave wave1 = {10,2,50,HIGH,0,37,0}; 
 
+unsigned long DELAY_TIME = 10; // 10 us
+unsigned long delayStart = 0; // the time the delay started
+//bool delayRunning = false; // true if still waiting for delay to finish
 
-//Tasks and their Schedules.
-t t_func1 = {0, 10}; 
+//bool ledOn = false; // keep track of the led state
 
-bool tCheck (struct t *t ) {
-  if (micros() > t->tStart + t->tTimeout) return true;    
-}
-
-void tRun (struct t *t) {
-  t->tStart = micros();
-}
 
 void update_wave(square_wave wave1) {
 if (wave1.state==0 and wave1.counter > wave1.phase){
@@ -55,18 +45,20 @@ else {
 void setup (void) {
   //Arduino setup.
   pinMode(wave1.pin, OUTPUT);
- 
-}
+  digitalWrite(wave1.pin, LOW); // turn led off
+//  ledOn = false;
+
+  // start delay
+  delayStart = micros();
+//  delayRunning = true;
+} 
 
 void loop (void) {
-  if (tCheck(&t_func1)) {
-    func1();
-    tRun(&t_func1);
-    }
+  while ((micros() - delayStart) <= DELAY_TIME) {
+    delayStart += DELAY_TIME; // this prevents drift in the delays
+    update_wave(wave1);
+  }
 }
 
-// the square wave lives in here, and eventually so too will the trigger fan in / fan out. 
-void func1 (void) {
-  update_wave(wave1);
-}
+
   
