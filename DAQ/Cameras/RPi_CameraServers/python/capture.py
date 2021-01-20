@@ -33,7 +33,6 @@ if __name__ == "__main__":
             camera.set_control(v4l2.V4L2_CID_HFLIP,1)
             print("Current resolution is {}".format(fmt))
             set_controls(camera)
-            sleep(1)
             capture(camera)
             print("Close camera...")
             camera.close_camera()
