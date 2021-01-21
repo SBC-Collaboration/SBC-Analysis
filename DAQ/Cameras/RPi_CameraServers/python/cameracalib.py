@@ -117,18 +117,8 @@ if (nPatternFound > 1):
 
     # Undistort an image
     img = cv2.imread(imgNotGood)
-    h,  w = img.shape[:2]
     print("Image to undistort: ", imgNotGood)
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),1,(w,h))
-
-    # undistort
-    mapx,mapy = cv2.initUndistortRectifyMap(mtx,dist,None,newcameramtx,(w,h),5)
-    dst = cv2.remap(img,mapx,mapy,cv2.INTER_LINEAR)
-
-    # crop the image
-    x,y,w,h = roi
-    dst = dst[y:y+h, x:x+w]
-    print("ROI: ", x, y, w, h)
+    dst = cv2.undistort(img, mtx, dist, None, mtx)
 
     cv2.imwrite(workingFolder + "/calibresult.png",dst)
     print("Calibrated picture saved as calibresult.png")
@@ -143,7 +133,7 @@ if (nPatternFound > 1):
     np.savetxt(filename, dist, delimiter=',')
 
     mean_error = 0
-    for i in xrange(len(objpoints)):
+    for i in range(len(objpoints)):  # change to xrange if using python 2
         imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
         error = cv2.norm(imgpoints[i],imgpoints2, cv2.NORM_L2)/len(imgpoints2)
         mean_error += error
