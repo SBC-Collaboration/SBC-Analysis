@@ -21,7 +21,7 @@ nRows = 9
 nCols = 6
 dimension = 25 #- mm
 
-workingFolder   = "./camera_01"
+workingFolder   = "./Captures"
 imageType       = 'jpg'
 #------------------------------------------
 

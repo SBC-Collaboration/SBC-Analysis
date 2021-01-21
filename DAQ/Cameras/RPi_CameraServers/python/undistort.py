@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import os
 
-os.chdir("/home/pi/SBCcode/DAQ/Cameras/RPi_CameraServers/python/Captures/")
+os.chdir("./Captures")
 k = input("Enter the name of file to you want to undistort: ")
 img = cv2.imread(k)
     
