@@ -1,6 +1,0 @@
-{
-"exposure" : 1,
-"adc_threshold" : 10,
-"pix_threshold" : 199,
-"frames_after" : 10
-}
