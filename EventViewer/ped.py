@@ -296,7 +296,7 @@ class Application(tk.Frame):
         try:
             fields = linecache.getline(path, 2).split()
             index = fields.index(self.plc_temp_var)
-            entries = linecache.getline(path, 7)
+            entries = linecache.getline(path, 7).split()
             self.temp_label.set(self.plc_temp_var + ': {:.1f}'.format(float(entries[index])))
         except ValueError:
             self.error += 'cannot find ' + self.plc_temp_var + ' in PLC log file\n'
@@ -403,6 +403,10 @@ class Application(tk.Frame):
             self.load_reco_row()
             self.image_directory = os.path.join(self.raw_directory, run, str(event), self.images_relative_path)
             self.reset_images()
+            event_path = "{raw}/{run}/{event}/Event.txt".format(raw=self.raw_directory, run=self.run, event=self.event)
+            with open(event_path, "r") as event_txt:
+                event_string = "Output from Event.txt:\n" + event_txt.read().strip()
+            self.event_info_var.set(event_string)
     
     def set_display_text(self, var, text):
         display_var = self.reco_row[var]
