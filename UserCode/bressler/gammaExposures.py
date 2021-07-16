@@ -14,7 +14,7 @@ from dogammasmakebubbles import getRate
 allxyzfname = "/pnfs/coupp/persistent/grid_output/SBC-17/output/SimpleXYZ_all.bin"
 xyzf = sbc.DataHandling.ReadBinary.ReadBlock(allxyzfname)
 print(xyzf.keys())
-pressureRequirement = 5
+pressureRequirement = 2.5
 
 print("----------------------------------------")
 print("Test: Y-Be")

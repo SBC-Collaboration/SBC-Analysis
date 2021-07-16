@@ -73,10 +73,10 @@ def trig_difference(runs):
     return [pmtnobubdiffs,pmtdiffs,dubbubdiffs]
     
 
-def zdependence(runs):
-    #m=4e7
+def zdependence(runs, m):
+    #m = 1e7
 
-    m=get_gain("/bluearc/storage/SBC-17-data/",runs[0])
+    #m=get_gain("/bluearc/storage/SBC-17-data/",runs[0])
     
     Ncoinc = [0,0]
     ntotcoinc = [0,0]
@@ -102,12 +102,15 @@ def zdependence(runs):
         bubt0 = a["bubble_t0"]
         events = [evnt for evnt in listdir(runrawpath) if not isfile(join(runrawpath,evnt))]
         for j in [0,1]:
-            with open("/nashome/b/bressler/sbcoutput/%s_PMTmatching_ch%s.txt"%(run,str(j)),"w+") as f:
+            with open("/nashome/b/bressler/sbcoutput/%s_PMTmatching_ch%s.txt"%(run,str(j)),"w+") as f, open("/nashome/b/bressler/sbcoutput/%s_muonCoincidences.txt"%run,'w+') as fmu:
                 f.write("run event PMT_t0_index PMT_t0_-at0_us PMT_t0 at0 phe z\n")
+                fmu.write("run event phe\n")
                 for x in events:
-                    
+                    yes = False
+                    if int(x)<len(runposreco["z"][0])-1:
+                        yes=True
                     totevents[j] += 1
-                    if not np.isnan(runposreco["z"][0][int(x)]):
+                    if yes and not np.isnan(runposreco["z"][0][int(x)]):
                         totbub[j] += 1
                         e = sbc.DataHandling.GetSBCEvent.GetEvent(runrawpath,x)
                         veto = e["fastDAQ"]["VetoCoinc"]
@@ -115,16 +118,13 @@ def zdependence(runs):
                         dcam = np.diff(cgate)
                         fdt = e["fastDAQ"]["time"]
                         camOffTimes = [fdt[i] for i in range(len(dcam)) if dcam[i] > 0.5]
-    
-                        
-                        if min(veto)<-0.3:
-                            print("Veto Coincidence")
+                        muon = False
                         pmttracetime = e["PMTtraces"]["t0_sec"][:,0]+e["PMTtraces"]["t0_frac"][:,0]
                         d=sbc.AnalysisModules.PMTfastDAQalignment.PMTandFastDAQalignment(e)
                         pmtalign = d["PMT_trigt0_sec"]+d["PMT_trigt0_frac"]
                         tracetimes = pmttracetime - pmtalign
                         at0 = bubt0[int(x),j]
-                        i=1 # to match the indexing of the pre-made code 
+                        i=0 # to match the indexing of the pre-made code I had 1???
                         candidate = 0
                         candidate_time = 0
                         candidate_PMTtime = 0
@@ -132,41 +132,49 @@ def zdependence(runs):
                         for t in (tracetimes-at0):
                             # loop through every PMT trace for the event
                             
-                            if t<0 and t>-500e-6: 
+                            if t<-150e-6 and t>-600e-6: 
+                                # if the trace time is within 500 microsec before acoustic t0
+                                if max(veto)>0.1:
+                                    if fdt[list(veto).index(max(veto))]-at0<0 and fdt[list(veto).index(max(veto))]-at0>-500e-6:
+                                        print("Veto Coincidence: event "+run+"-"+str(x))
+                                        muon = True
+                                        
+                                #lastCamOff = 0
+                                #for k in range(len(camOffTimes)):
+                                #    if t+at0 > camOffTimes[k]:
+                                #        lastCamOff = camOffTimes[k]
+                                #    elif t+at0 < camOffTimes[k]:
+                                #        break
+                                #if t+at0-lastCamOff > 25e-6:
+                                    # if the trace time is more than 25 microseconds away from a camera gate rise
+                                    #but not doing it this way anymore because we'll check for the LED being on later during the merge
+                                ntotcoinc[j]+=1
+                                pmtdiffs.append(t)
                                 
-                                lastCamOff = 0
-                                for k in range(len(camOffTimes)):
-                                    if t+at0 > camOffTimes[k]:
-                                        lastCamOff = camOffTimes[k]
-                                    elif t+at0 < camOffTimes[k]:
-                                        break
-                                if t+at0-lastCamOff > 25e-6:
-                                    # if the trace time is within 500 microseconds before acoustic t0:
-                                    ntotcoinc[j]+=1
-                                    pmtdiffs.append(t)
-                                    
-                                    #take abs to get positive area:
-                                    trace = np.fabs(e["PMTtraces"]["traces"][i][0]) 
-                                    #if ch0 saturated, stitch in low res channel:
-                                    if max(trace) == 128:
-                                        trace = pi.stitchTraces(trace,np.fabs(e["PMTtraces"]["traces"][i][1]))
-                                    dt = e["PMTtraces"]["dt"][i][0]
-                                    
-                                    #subtract baseline:
-                                    #Actually this gets done in pulse_integrator anyway
-                                    #baseline = np.mean(trace[0:50])
-                                    #trace -= baseline 
-                                                                
-                                    #integrate and convert to phe:
-                                    [phe,n,totInt,pktimes] = pi.SBC_pulse_integrator_bressler(trace,dt) 
-                                    if phe != None:
-                                        phe /= m
-                                        #keep track of largest candidate:
-                                        if phe > candidate:
-                                            candidate = phe
-                                            candidate_time = t
-                                            candidate_PMTtime = t+at0
-                                            candidate_index = i
+                                #take abs to get positive area:
+                                trace = np.fabs(e["PMTtraces"]["traces"][i][0]) 
+                                #if ch0 saturated, stitch in low res channel:
+                                if max(trace) == 128:
+                                    trace = pi.stitchTraces(trace,np.fabs(e["PMTtraces"]["traces"][i][1]))
+                                dt = e["PMTtraces"]["dt"][i][0]
+                                
+                                #subtract baseline:
+                                #Actually this gets done in pulse_integrator anyway
+                                #baseline = np.mean(trace[0:50])
+                                #trace -= baseline 
+                                                            
+                                #integrate and convert to phe:
+                                [phe,n,totInt,pktimes] = pi.SBC_pulse_integrator_bressler(trace,dt) 
+                                if phe != None:
+                                    phe /= m
+                                    #keep track of largest candidate:
+                                    if phe > candidate:
+                                        candidate = phe
+                                        candidate_time = t
+                                        candidate_PMTtime = t+at0
+                                        candidate_index = i
+                                #else:
+                                #    candidate = -1.0
                             i+=1
                         #i.e. if there is a candidate PMT trace with area greater than zero
                         if candidate > 0:
@@ -180,6 +188,8 @@ def zdependence(runs):
                                                               candidate_time*1e6,
                                                               pmtt,at0,candidate,
                                                               runposreco["z"][0][int(x)]))
+                        if muon:
+                            fmu.write("%s %s %f\n"%(run,x,candidate))
                     gc.collect()
             print("run "+run+" file %s written"%str(j))
                         #pmtdiffs.append(candidate_times[candidates.index(max(candidates))])

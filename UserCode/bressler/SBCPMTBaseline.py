@@ -33,7 +33,7 @@ def getSBCPMTBaseline(runpath,event,plotbool):
     def gaus(x,mu,sigma):
             return scipy.stats.norm.pdf(x,mu,sigma)
     
-    vals, bins, _ = plt.hist(ev_baselines,int(np.floor(np.sqrt(len(ev_baselines)))),normed=True)
+    vals, bins, _ = plt.hist(ev_baselines,int(np.floor(np.sqrt(len(ev_baselines)))),density=True)
     b = bins[:len(bins)-1]
     params,params_cov = scipy.optimize.curve_fit(gaus,b,vals,p0=[-16,1])
     if plotbool:

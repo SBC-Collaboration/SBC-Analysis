@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Apr  1 10:49:58 2020
+
+@author: bressler
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.style.use('default')
+import gc
+import SBCcode as sbc
+import pulse_integrator as pi
+from gaincalc import get_gain
+import runlistscatalogue as rlc
+from randomizecoincspectrum import randomized_t0_scintillation
+import LindhardModelPHE as lm
+
+CONVERSION_TO_CHARGE = (125.0/128)*(1/50.0)*(1/1000.0)*(1/(1.602e-19))
+datapath = '/bluearc/storage/SBC-17-data/'
+
+
+# Comparing BG and Cf-252 Coincident Spectra
+with open('/nashome/b/bressler/sbcoutput/bgJune27and28powerof2bins_coincident_spectrum.txt','r') as bgfile:
+    bgdata = bgfile.readlines()
+
+with open('/nashome/b/bressler/sbcoutput/bgJune27and28powerof2bins_coincident_spectrum_multibub.txt','r') as bgfile:
+    bgmultiplesdata = bgfile.readlines()
+    
+bgSplitTopLine = (bgdata[0].rstrip()).split('\t')
+bgSplitLines = [bgdata[i].rstrip().split('\t') for i in range(len(bgdata))]
+bgQbins = [bgSplitTopLine[i] for i in range(1,len(bgSplitTopLine))]
+bgPheBins = [bgSplitLines[i][0].strip('phe').split('-') for i in range(1,len(bgdata))]
+bgPheBinsEdges = []
+for i in range(len(bgPheBins)):
+    nextIsNegative = False
+    for j in range(len(bgPheBins[i])):
+        if bgPheBins[i][j] == '':
+            nextIsNegative = True
+            continue
+        val = float(bgPheBins[i][j])
+        if nextIsNegative: 
+            val = -val
+            nextIsNegative = False
+        if val not in bgPheBinsEdges: bgPheBinsEdges.append(val)
+bgPheBinCenters = [np.sqrt(bgPheBinsEdges[i] * bgPheBinsEdges[i+1]) for i in range(len(bgPheBinsEdges)-1)]
+for i in range(len(bgPheBinCenters)):
+    if np.isnan(bgPheBinCenters[i]): 
+        bgPheBinCenters[i] = 0
+    elif bgPheBinCenters[i] == np.sqrt(1.5*0.5):
+        bgPheBinCenters[i] = 1
+bgRates = np.zeros([len(bgPheBinCenters),len(bgQbins)])
+bgRateErr = [np.zeros([len(bgPheBinCenters),len(bgQbins)]), np.zeros([len(bgPheBinCenters),len(bgQbins)])]
+
+for i in range(len(bgPheBinCenters)):
+    for j in range(1,len(bgQbins)+1):
+        l = bgSplitLines[i+1]
+        bgRates[i,j-1] = float(l[j].split(',')[0])
+        
+        bgRateErr[0][i,j-1] = float(l[j].split(',')[1])
+        bgRateErr[1][i,j-1] = float(l[j].split(',')[2])
+        if np.isinf(bgRates[i,j-1]) or np.isnan(bgRates[i,j-1]): 
+            bgRates[i,j-1] = 0
+        if np.isinf(bgRateErr[0][i,j-1]) or np.isnan(bgRateErr[0][i,j-1]) or np.isinf(bgRateErr[1][i, j-1]) or np.isnan(bgRateErr[1][i,j-1]):
+            bgRateErr[i,j-1, 0] = 0
+            bgRateErr[i, j-1, 1] = 0
+print(bgRates)
+print("Total background rate: %f Hz"%sum(bgRates[:,1]))
+print("Background rate, excluding last bin: %f Hz"%sum(bgRates[:-1, 1]))
+"""
+with open('/nashome/b/bressler/sbcoutput/bgJuly3and4_coincident_spectrum.txt','r') as nextbgfile:
+    nextbgdata = nextbgfile.readlines()
+    
+nextbgSplitTopLine = (nextbgdata[0].rstrip()).split('\t')
+nextbgSplitLines = [nextbgdata[i].rstrip().split('\t') for i in range(len(nextbgdata))]
+nextbgQbins = [nextbgSplitTopLine[i] for i in range(1,len(nextbgSplitTopLine))]
+nextbgPheBins = [nextbgSplitLines[i][0].strip('phe').split('-') for i in range(1,len(nextbgdata))]
+nextbgPheBinsEdges = []
+for i in range(len(nextbgPheBins)):
+    nextIsNegative = False
+    for j in range(len(nextbgPheBins[i])):
+        if nextbgPheBins[i][j] == '':
+            nextIsNegative = True
+            continue
+        val = float(nextbgPheBins[i][j])
+        if nextIsNegative: 
+            val = -val
+            nextIsNegative = False
+        if val not in nextbgPheBinsEdges: nextbgPheBinsEdges.append(val)
+nextbgPheBinCenters = [(nextbgPheBinsEdges[i]+nextbgPheBinsEdges[i+1])/2 for i in range(len(nextbgPheBinsEdges)-1)]
+nextbgRates = np.zeros([len(nextbgPheBinCenters),len(nextbgQbins)])
+nextbgRateErr = np.zeros([len(nextbgPheBinCenters),len(nextbgQbins)])
+for i in range(len(nextbgPheBinCenters)):
+    for j in range(1,len(nextbgQbins)+1):
+        l = nextbgSplitLines[i+1]
+        nextbgRates[i,j-1] = float(l[j].split(',')[0])
+        nextbgRateErr[i,j-1] = float(l[j].split(',')[1])
+        if np.isinf(nextbgRates[i,j-1]) or np.isnan(nextbgRates[i,j-1]): nextbgRates[i,j-1] = 0
+        if np.isinf(nextbgRateErr[i,j-1]) or np.isnan(nextbgRates[i,j-1]): nextbgRateErr[i,j-1] = 0
+
+"""
+
+with open('/nashome/b/bressler/sbcoutput/cfJuneminus50CCombinedpowerof2bins_coincident_spectrum.txt','r') as cffile:
+    cfdata = cffile.readlines()
+
+cfSplitTopLine = (cfdata[0].rstrip()).split('\t')
+cfSplitLines = [cfdata[i].rstrip().split('\t') for i in range(len(cfdata))]
+cfQbins = [cfSplitTopLine[i] for i in range(1,len(cfSplitTopLine))]
+#print(cfQbins)
+cfPheBins = [cfSplitLines[i][0].strip('phe').split('-') for i in range(1,len(cfdata))]
+cfPheBinsEdges = []
+for i in range(len(cfPheBins)):
+    nextIsNegative = False
+    for j in range(len(cfPheBins[i])):
+        if cfPheBins[i][j] == '':
+            nextIsNegative = True
+            continue
+        val = float(cfPheBins[i][j])
+        if nextIsNegative: 
+            val = -val
+            nextIsNegative = False
+        if val not in cfPheBinsEdges: cfPheBinsEdges.append(val)
+
+cfPheBinCenters = [np.sqrt(cfPheBinsEdges[i] * cfPheBinsEdges[i+1]) for i in range(len(cfPheBinsEdges)-1)]
+for i in range(len(cfPheBinCenters)):
+    if np.isnan(cfPheBinCenters[i]): 
+        cfPheBinCenters[i] = 0
+    elif cfPheBinCenters[i] == np.sqrt(1.5*0.5):
+        cfPheBinCenters[i] = 1
+cfRates = np.zeros([len(cfPheBinCenters),len(cfQbins)])
+cfRateErr = [np.zeros([len(cfPheBinCenters),len(cfQbins)]), np.zeros([len(cfPheBinCenters),len(cfQbins)])]
+for i in range(len(cfPheBinCenters)):
+    for j in range(1,len(cfQbins)+1):
+        l = cfSplitLines[i+1]
+        #print(l)
+        cfRates[i,j-1] = float(l[j].split(',')[0])
+        cfRateErr[0][i,j-1] = float(l[j].split(',')[1])
+        cfRateErr[1][i,j-1] = float(l[j].split(',')[2])
+        if np.isinf(cfRates[i,j-1]) or np.isnan(cfRates[i,j-1]): cfRates[i,j-1] = 0
+        if np.isinf(cfRateErr[0][i,j-1]) or np.isnan(cfRateErr[0][i,j-1]) or np.isinf(cfRateErr[1][i, j-1]) or np.isnan(cfRateErr[1][i, j-1]): 
+            cfRateErr[i,j-1,0] = 0
+            cfRateErr[i,j-1, 1] = 0
+print("Total Cf rate: %f Hz"%sum(cfRates[:,1]))
+print("Cf rate, excluding last bin: %f Hz"%sum(cfRates[:-1, 1]))
+
+plt.figure()
+for j in range(len(bgQbins)):
+    if np.size(np.nonzero(bgRates[:,j]))>0:
+        plt.errorbar(bgPheBinCenters,bgRates[:,j],[bgRateErr[1][:,j], bgRateErr[0][:,j]], c='k',marker='o',linestyle='none',
+                     label="Background")
+        for k in range(len(bgRates[:,j])):
+            plt.hlines(bgRates[k,j],float(bgPheBinsEdges[k]),float(bgPheBinsEdges[k+1]), 'k')
+#for j in range(len(nextbgQbins)):
+#    if np.size(np.nonzero(nextbgRates[:,j]))>0:
+#        plt.errorbar(nextbgPheBinCenters,nextbgRates[:,j],nextbgRateErr[:,j],marker='o',linestyle='none',
+#                     label="Background "+nextbgQbins[j])
+for j in range(len(cfQbins)):
+    if np.size(np.nonzero(cfRates[:,j]))>0:
+        plt.errorbar(cfPheBinCenters,cfRates[:,j],[cfRateErr[1][:,j], cfRateErr[0][:,j]], c='r', marker='s',linestyle='none',
+                     label="Cf-252")
+        for k in range(len(cfRates[:,j])):
+            plt.hlines(cfRates[k,j],float(cfPheBinsEdges[k]),float(cfPheBinsEdges[k+1]), 'r')
+        #print(sum(cfRates[:,j]))
+
+
+
+plt.legend(fontsize=16)
+plt.xscale('symlog', linthreshx = 1.5, linscalex=0.301)
+plt.yscale('log')
+plt.xlabel('Collected Light [phe]',fontsize=18)
+plt.xticks(fontsize=16)
+plt.yticks(fontsize=16)
+plt.ylabel('Rate [Hz]',fontsize=18)
+plt.grid()
+plt.show()
+
+cfRatesnew = [[] for i in range(len(cfQbins))]
+cfRateErrnew = np.zeros_like(cfRateErr)
+bgRatesnew = [[] for i in range(len(bgQbins))]
+bgRateErrnew = np.zeros_like(bgRateErr)
+#nextbgRatesnew = [[] for i in range(len(nextbgQbins))]
+#nextbgRateErrnew = [[] for i in range(len(nextbgQbins))]
+cfbinwidths = [cfPheBinsEdges[i+1]-cfPheBinsEdges[i] for i in range(len(cfPheBinsEdges)-1)]
+bgbinwidths = [bgPheBinsEdges[i+1]-bgPheBinsEdges[i] for i in range(len(bgPheBinsEdges)-1)]
+#nextbgbinwidths = [nextbgPheBinsEdges[i+1]-nextbgPheBinsEdges[i] for i in range(len(nextbgPheBinsEdges)-1)]
+bgRates_EmptyBinsUL = [[] for i in range(len(bgQbins))]
+bg_EmptyBinsPhe = [[] for i in range(len(bgQbins))]
+for k in range(len(cfQbins)):
+    for l in range(len(cfbinwidths)):
+        cfRatesnew[k].append(np.divide(cfRates[l,k],cfbinwidths[l]))
+        cfRateErrnew[0][l,k]=np.divide(cfRateErr[0][l,k],cfbinwidths[l])
+        cfRateErrnew[1][l,k]=np.divide(cfRateErr[1][l,k],cfbinwidths[l])
+for k in range(len(bgQbins)):
+    for l in range(len(bgbinwidths)):
+        #print(bgbinwidths[l])
+        bgRatesnew[k].append(np.divide(bgRates[l,k],bgbinwidths[l]))
+        #print(bgRateErr[0][l,k])
+        #print(np.divide(bgRateErr[0][l,k], bgbinwidths[l]))
+        bgRateErrnew[0][l,k] = np.divide(bgRateErr[0][l,k],bgbinwidths[l])
+        bgRateErrnew[1][l,k] = np.divide(bgRateErr[1][l,k], bgbinwidths[l])
+        if bgRateErrnew[1][l,k] == 0:
+            bgRates_EmptyBinsUL[k].append(bgRateErrnew[0][l,k])
+            bgRateErrnew[0][l,k] = 0
+            bg_EmptyBinsPhe[k].append(bgPheBinCenters[l])
+#for k in range(len(nextbgQbins)):
+#    for l in range(len(nextbgbinwidths)):
+#        nextbgRatesnew[k].append(np.divide(nextbgRates[l,k],nextbgbinwidths[l]))
+#        nextbgRateErrnew[k].append(np.divide(nextbgRateErr[l,k],nextbgbinwidths[l]))
+#print(bgRateErr[0])
+#print(bgRateErrnew[0])
+fig, ax = plt.subplots(constrained_layout = True)
+for j in range(len(bgQbins)):
+    if np.size(np.nonzero(bgRatesnew[:][j]))>0:
+        #print(bgRatesnew[:][j])
+        ax.errorbar(bgPheBinCenters,bgRatesnew[:][j],[bgRateErrnew[1][:,j], bgRateErrnew[0][:,j]],color='k',marker='o',linestyle='none',
+                     label="Background")
+        ax.errorbar(bg_EmptyBinsPhe[j], bgRates_EmptyBinsUL[j], [0.5*val for val in bgRates_EmptyBinsUL[j]], uplims=True, color='k', marker='o',
+                    linestyle='none', capsize=5)
+        #print(bgRatesnew[:][j])
+        #print(bgRatesnew[j][5])  
+        
+        which_empty_bin = 0
+        for k in range(len(bgRatesnew[:][j])):
+            #print(bgRatesnew[j][k])
+            plt.hlines(bgRatesnew[j][k],float(bgPheBinsEdges[k]),
+                       float(bgPheBinsEdges[k+1]),color='k')
+            if bgPheBinCenters[k] in bg_EmptyBinsPhe[j]:
+                plt.hlines(bgRates_EmptyBinsUL[j][which_empty_bin], float(bgPheBinsEdges[k]),
+                       float(bgPheBinsEdges[k+1]),color='k') 
+                which_empty_bin += 1
+            
+"""            
+for j in range(len(nextbgQbins)):
+    if np.size(np.nonzero(nextbgRatesnew[:][j]))>0:
+        print(nextbgRatesnew[:][j])
+        ax.errorbar(nextbgPheBinCenters,nextbgRatesnew[:][j],nextbgRateErrnew[:][j],color='b',marker='o',linestyle='none',
+                     label="Background "+nextbgQbins[j])
+        for k in range(len(nextbgRatesnew[:][j])):
+            plt.hlines(nextbgRatesnew[j][k],float(bgPheBinsEdges[k]),float(bgPheBinsEdges[k+1]),color='b')
+"""            
+for j in range(len(cfQbins)):
+    if np.size(np.nonzero(cfRatesnew[:][j]))>0:
+        ax.errorbar(cfPheBinCenters,cfRatesnew[:][j],[cfRateErrnew[1][:,j], cfRateErrnew[0][:,j]],color='r',marker='s',linestyle='none',
+                     label=r"$^{252}$Cf")
+        for k in range(len(cfRatesnew[:][j])):
+            plt.hlines(cfRatesnew[j][k],float(cfPheBinsEdges[k]),float(cfPheBinsEdges[k+1]),color='r')
+        #print(sum(cfRates[:][j]))
+ax.set_xscale('symlog', linthreshx=1.5, linscalex=0.301)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+ax.set_yscale('log')
+"""
+ax2 = ax.twiny()
+ax2.set_xscale('symlog')
+originalx = ax.get_xticks()
+newx = []
+#for x in cfPheBinCenters[1:]:
+for x in originalx:
+    newx.append(round(lm.EnrXenonChamber(x),1))
+#ax2.set_xticks(cfPheBinCenters[1:])
+ax2.set_xlim(ax.get_xlim())
+ax2.set_xticklabels(newx, fontsize=14)
+ax2.set_xlabel(r'$E_{NR}$ [keV]', fontsize=18)
+ax2.xaxis.set_ticks_position('bottom')
+ax2.xaxis.set_label_position('bottom')
+ax2.spines["bottom"].set_position(("axes", -0.15))
+ax2.set_frame_on(True)
+ax2.patch.set_visible(False)
+"""
+#ax.set_xlim([0, max(bgPheBinCenters)])
+ax.legend(fontsize=18)
+#ax.set_xscale('symlog')
+#ax.set_yscale('log')
+ax.set_xlabel('Collected Light [phe]',fontsize=20)
+ax.set_ylabel('Differential Rate [Hz/phe]',fontsize=20)
+ax.grid()
+plt.show()
+
+"""
+cfcoinccdf = np.cumsum(cfRates[:,1])
+bgcoinccdf = np.cumsum(bgRates[:,1])
+
+# K-S test stuff:
+run='20170628_9'
+runreconpath = "/pnfs/coupp/persistent/grid_output/SBC-17/output/%s/"%run
+runpath = datapath+run
+#events = [evnt for evnt in os.listdir(runpath) if not os.path.isfile(os.path.join(runpath,evnt))]
+#Nevents = len(events)
+m=get_gain(datapath,run)
+pmtfilename = runreconpath+"PMTpulseAnalysis_%s.bin"%run
+pmt = sbc.DataHandling.ReadBinary.ReadBlock(pmtfilename)
+#print(len(pmt["PMT_pulse_area"]))
+#evid = pmt["runid"]+"-"+pmt["ev"]
+#area = pmt["PMT_pulse_area"]
+#bubdata[]
+evdone = []
+j=0
+n=0
+indices = [i for i,x in enumerate(pmt["ev"]) if int(x)==n]
+#print(indices)
+areas=pmt["PMT_pulse_area"][indices]
+myphe = [0 for i in range(len(areas))]
+theirphe = [0 for i in range(len(areas))]
+#print(len(areas))
+e = sbc.DataHandling.GetSBCEvent.GetEvent(runpath,n)
+
+for k in range(len(e["PMTtraces"]["traces"])):
+    trace = np.fabs(e["PMTtraces"]["traces"][k][0]) 
+    #if ch0 saturated, stitch in low res channel:
+    if max(trace) == 128:
+        trace = pi.stitchTraces(trace,np.fabs(e["PMTtraces"]["traces"][k][1]))
+        #print('stitching')
+    dt = e["PMTtraces"]["dt"][k][0]
+                                    
+    #integrate and convert to phe:
+    [a,n,totInt,pktimes] = pi.SBC_pulse_integrator_bressler(trace,dt) 
+    #print(a)
+    myphe[j]=a/m
+    theirphe[j]=-areas[k]*CONVERSION_TO_CHARGE/e["PMTtraces"]["v_scale"][k,0,None]
+
+    j+= 1
+    gc.collect()
+
+#myphe,_,_,_,_ = randomized_t0_scintillation(rlc.cfJuly7to11,m)
+print(cfRates)
+
+ksm = len(myphe)
+print(ksm)
+ksn = 726
+c99 = 1.628
+Dreject = c99*np.sqrt((ksm+ksn)/(ksn*ksm))
+print(Dreject)
+
+plt.figure()
+allcdf,_,_=plt.hist(myphe,cfPheBinsEdges,density=True,cumulative=True,
+                    histtype='step',linewidth=2,label='Coincidences with randomized acoustic t0')
+plt.step(cfPheBinCenters,cfcoinccdf,'k',where='mid',label='Bubble-coincident PMT Triggers')
+differences = [abs(allcdf[i]-cfcoinccdf[i]) for i in range(len(allcdf))]
+print(differences)
+plt.xscale('symlog')
+plt.xlabel('Collected Light [phe]',fontsize=17)
+plt.ylabel("Cumulative Distribution Function",fontsize=17)
+plt.legend(fontsize=15,loc='lower right')
+#plt.yscale('log')
+plt.show()
+
+plt.figure()
+plt.step(bgPheBinCenters,bgcoinccdf,'k',where='mid',label='Background')
+plt.step(cfPheBinCenters,cfcoinccdf,'r',where='mid',label='cf-252')
+plt.xscale('symlog')
+plt.xlabel('Collected Light [phe]',fontsize=17)
+plt.ylabel("Cumulative Distribution Function",fontsize=17)
+plt.legend(fontsize=15)
+#plt.yscale('log')
+plt.show()
+
+
+plt.figure()
+plt.hist(myphe,cfPheBinsEdges,density=True,histtype='step',label='randomized')
+plt.step(cfPheBinCenters,cfRates[:,1],where='mid',label='real coincidences')
+plt.yscale('log')
+plt.xscale('symlog')
+plt.legend(fontsize=16)
+plt.xlabel('Scintillation [phe]',fontsize=18)
+plt.ylabel('Normalized Histogram (pdf)',fontsize=18)
+plt.show()
+
+plt.figure()
+plt.errorbar(bgPheBinCenters,bgRates[:,1],bgRateErr[:,1],ds='steps-mid',label='Background')
+plt.errorbar(cfPheBinCenters,cfRates[:,1],cfRateErr[:,1],ds='steps-mid',label='Cf-252')
+plt.yscale('log')
+plt.xscale('symlog')
+plt.legend(fontsize=16)
+plt.xlabel('Scintillation [phe]',fontsize=18)
+plt.ylabel('fraction of bubbles (pdf)',fontsize=18)
+plt.show()
+"""

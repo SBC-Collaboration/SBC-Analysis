@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
-with open("/nashome/b/bressler/sbcoutput/allYBe_merged.txt",'r') as fin:
+with open("/nashome/b/bressler/sbcoutput/CfCombinedMultiTemp_merged.txt",'r') as fin:
     data = fin.readlines()
     
 headers = data[0].split()

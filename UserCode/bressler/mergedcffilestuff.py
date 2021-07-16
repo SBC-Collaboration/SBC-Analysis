@@ -11,12 +11,12 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import SBCcode as sbc
 from dogammasmakebubbles import getRate
-from SBCcode.UserCode.bressler.runlistscatalogue import *
+import runlistscatalogue as rlc
 print("modules loaded")
 
-bgruns = bgOct10and11
+bgruns = rlc.bgJune23and24
 
-srcruns = YBeSept26to28
+srcruns = rlc.cfJuly6to11
 
 srctotbub,srctotlt,_,_,srcr,srcrerr,_=getRate(sbc.DataHandling.ReadBinary.ReadBlock("/pnfs/coupp/persistent/grid_output/SBC-17/output/SimpleXYZ_all.bin"),
               srcruns,5)

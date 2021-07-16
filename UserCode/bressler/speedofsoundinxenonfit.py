@@ -12,6 +12,8 @@ from os.path import isfile,join
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
+import runlistscatalogue as rlc
+
 
 runs = ["20170707_6","20170707_7","20170707_8","20170707_9","20170707_10","20170708_0",
             "20170708_1","20170708_3","20170708_4","20170708_5","20170708_6",
@@ -29,7 +31,7 @@ allxyzfname = "/pnfs/coupp/persistent/grid_output/SBC-17/output/SimpleXYZ_all.bi
 xyzf = sbc.DataHandling.ReadBinary.ReadBlock(allxyzfname)
 datas = []
 for run in runs:
-    ch0files.append(open("/nashome/b/bressler/output/%s_PMTmatching_ch0.txt"%run,"r"))
+    ch0files.append(open("/nashome/b/bressler/sbcoutput/%s_PMTmatching_ch0.txt"%run,"r"))
     #ch1files.append(open("/nashome/b/bressler/output/%s_PMTmatching_ch1.txt"%run,"r"))
 
 for f in ch0files:

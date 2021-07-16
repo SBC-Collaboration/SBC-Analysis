@@ -12,7 +12,7 @@ import scipy as sp
 rho_D = 0.4 #GeV c^-2 cm^-3
 v0 = 230 #km/s
 v_esc = 600 #km/s
-N0 = 6.02e26 #kg^-1 , avagadro's number
+N0 = 6.02e26 #mol^-1 , avagadro's number
 A_Ar = 39.948 #u, atomic mass of argon
 
 r = lambda MD,MT: (4*MD*MT) / ((MD+MT)**2)

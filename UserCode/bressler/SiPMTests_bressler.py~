@@ -1,0 +1,212 @@
+
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.integrate
+from scipy.fftpack import fft
+
+import SBCcode
+from SBCcode.Tools import SBCtools
+
+class SiPMTrigger(object):
+    def __init__(self, trig=0):
+        self.trig=trig
+
+class SiPMPlotter(object):
+    def __init__(self, pmt_data, left=None, right=None,
+                 default_trigger=0, runid=None, ev=None, areas=None):
+        self.pmt_data = pmt_data
+        self.default_trigger = default_trigger
+        self.trigger = SiPMTrigger(trig=self.default_trigger)
+        self.fig, self.ax= plt.subplots(nrows=2, ncols=1)
+        self.runid = runid
+        self.ev = ev
+        self.areas=areas
+        self.left = left
+        self.right = right
+        self.update_title()
+        cid = plt.gcf().canvas.mpl_connect("key_press_event", self.key_press)
+
+        return
+
+    def plot_SiPM_trace(self):
+        # plt.cla()
+        self.ax[0].clear()
+        self.ax[1].clear()
+        xd = 1e9 * np.arange(pmt_data["traces"].shape[2]) * pmt_data["dt"][self.trigger.trig, 0]
+        yd_0 = pmt_data["traces"][self.trigger.trig, 0, :] * pmt_data["v_scale"][self.trigger.trig, 0] + \
+                  pmt_data["v_offset"][self.trigger.trig, 0]
+        yd_1 = pmt_data["traces"][self.trigger.trig, 1, :] * pmt_data["v_scale"][self.trigger.trig, 1] + \
+                  pmt_data["v_offset"][self.trigger.trig, 1]
+        #fig,ax = plt.subplots(nrows=2, ncols=1)
+        self.ax[0].plot(xd, yd_0,color="r")
+        self.ax[0].plot(xd, yd_1,color="b")
+        self.ax[0].set_xlabel("Time (ns)")
+        self.ax[0].set_ylabel("Amp (a.u.)")
+
+        yf0 = fft(yd_0)
+        yf1 = fft(yd_1)
+        xf = np.linspace(0.0, 1e9*len(xd)/(2*xd[-1]), len(xd)//2)
+        self.ax[1].semilogy(xf, 2.0 / len(xd) * np.abs(yf0[0:len(xd) // 2]))
+        self.ax[1].semilogy(xf, 2.0 / len(xd) * np.abs(yf1[0:len(xd) // 2]))
+        self.ax[0].axvline(self.left, color="k", linewidth=2)
+        self.ax[0].axvline(self.right, color="k", linewidth=2)
+        dt = pmt_data["dt"][self.trigger.trig, 0]
+        #plt.specgram(yd_1, NFFT=256, Fs=1e-9 /dt, )
+        self.ax[1].set_xlabel("Frequency")
+        self.ax[1].set_ylabel("Amplitude")
+        self.update_title()
+        plt.tight_layout()
+        plt.draw()
+        return
+
+    def key_press(self, mpl_event):
+        if mpl_event.key == "left":
+            self.trigger.trig -= 1 if self.trigger.trig else -(self.pmt_data["traces"].shape[0]-1)
+        elif mpl_event.key == "right":
+            self.trigger.trig += 1 if self.trigger.trig < self.pmt_data["traces"].shape[0] else -(self.pmt_data["traces"].shape[0]-1)
+        else:
+            return
+        self.plot_SiPM_trace()
+        return
+
+    def update_title(self):
+        plt.suptitle("Runid: {} || Event: {} || Trigger {}\nUse Left and Right arrows to navigate.\nArea={}"\
+                     .format(self.runid, self.ev, self.trigger.trig, self.areas[self.trigger.trig]))
+
+if __name__ == "__main__":
+    #raw_directory = r"C:\Users\John\Documents\SBC-18-data"
+    raw_directory = "/bluearc/storage/SBC-18-data/"
+
+    b61V            = os.path.join(raw_directory, "20181210_0")
+    b61p5V          = os.path.join(raw_directory, "20181210_1")
+    b62V            = os.path.join(raw_directory, "20181210_2")
+    b60p5V          = os.path.join(raw_directory, "20181210_3")
+    b60V            = os.path.join(raw_directory, "20181210_4")
+    b59p5V          = os.path.join(raw_directory, "20181210_5")
+    b59V            = os.path.join(raw_directory, "20181210_6")
+    labels = ["61V - LED ON",
+              "61.5V - LED ON",
+              "62V - LED ON",
+              "60.5V - LED ON",
+              "60V - LED ON",
+              "59.5V - LED ON",
+              "589V - LED ON"
+               ]
+
+    var_array = [b61V,
+                 b61p5V,
+                 b62V,
+                 b60p5V,
+                 b60V,
+                 b59p5V,
+                 b59V
+                 ]
+
+    colors = ["crimson",
+              "yellow",
+              "cyan",
+              "magenta",
+              "green",
+              "black",
+              "blue"
+              ]
+
+    active = np.array([1,
+                       1,
+                       0,
+                       1,
+                       1,
+                       1,
+                       1
+                       ], dtype=bool)
+
+    labels = np.array(labels)[active]
+    var_array = np.array(var_array)[active]
+    colors = np.array(colors)[active]
+    #nbins = 2500
+    #fig, ax = plt.subplots(1, 1)
+    #plot_SiPM_trace(ax, SBCcode.get_event(active_event, 0, "PMTtraces")["PMTtraces"])
+
+    # plt.ioff()
+    areas = []
+    int_l = []
+    int_r = []
+    max_times = []
+    n_runs =  len(var_array)
+    plt.ioff()
+    left_lim = 800
+    right_lim = 1400
+    for run_ix in range(n_runs):
+        sub_areas = []
+        sub_max_times = []
+        active_event = var_array[run_ix]
+        events = SBCtools.BuildEventList(active_event)
+        for ev in events:
+            pmt_data = SBCcode.get_event(active_event, ev, "PMTtraces", max_file_size=1300)["PMTtraces"]
+            n_triggers = pmt_data["traces"].shape[0]
+            for trig in range(n_triggers):
+                xd = 1e9 * np.arange(pmt_data["traces"].shape[2]) * pmt_data["dt"][trig, 0]
+                yd_0 = pmt_data["traces"][trig, 0, :] * pmt_data["v_scale"][trig, 0] + \
+                       pmt_data["v_offset"][trig, 0]
+                yd_1 = pmt_data["traces"][trig, 1, :] * pmt_data["v_scale"][trig, 1] + \
+                       pmt_data["v_offset"][trig, 1]
+                good_indices = (xd < right_lim) & (xd > left_lim)
+                avg = np.average(yd_1[:left_lim])
+                y0_max = max(yd_0[left_lim:right_lim])
+                y1_max = max(yd_1[left_lim:right_lim])
+                xindex_max1 = np.where(yd_1==y1_max)[0][0]
+                #print(xindex_max1)
+                yy = y1_max
+                better_indices = []
+                j=0
+                while yy>0:
+                    better_indices.append(xindex_max1+j)
+                    yy = yd_1[xindex_max1+j]
+                    j+=1
+                #int_r.append(xindex_max1+j-1)
+                j=1
+                while yy>0:
+                    yy = yd_1[xindex_max1 - j]
+                    np.insert(better_indices,0,yy)
+                    j += 1
+                #int_l.append(xindex_max1-j+1)
+                #print("better indices: ",better_indices)    
+                maxtime1 = 1e9 * pmt_data["dt"][trig, 1] * np.argmax(pmt_data["traces"][trig, 1, :])
+
+                #lmin = 
+                #pmt_area1 = scipy.integrate.trapz(yd_1[better_indices],
+                #                                 dx=1e9*pmt_data["dt"][trig, 1])
+                #print("A=",pmt_area1)
+                # if np.any(yd_0 > 0.15):
+                #     pmt_area = -1.
+                # else:
+                pmt_area1 = np.sum(yd_1[better_indices]-avg)
+                #print(np.sum(yd_1))
+                sub_areas.append(pmt_area1)
+                sub_max_times.append(maxtime1)
+
+            plotter = SiPMPlotter(pmt_data, runid=os.path.basename(active_event), ev=ev,
+                                  areas=sub_areas,
+                                  left=left_lim, right=right_lim)
+
+            plotter.plot_SiPM_trace()
+            plt.show()
+        areas.append(sub_areas)
+        max_times.append(sub_max_times)
+    #print(areas)
+    #areas_cut = [a for a in areas[0]]
+    plt.hist(areas, bins=np.ceil(np.sqrt(len(areas[0]))), fill=False, color=colors, histtype="step", stacked=False, label=labels)
+    plt.legend(loc="upper right")
+    plt.suptitle("Areas")
+    plt.yscale("log")
+
+    # plt.figure()
+    # plt.hist(max_times, bins=nbins, fill=False, color=colors, histtype="step", stacked=False)
+    # plt.legend(labels)
+    # plt.suptitle("Time of max")
+    #plt.ion()
+    plt.grid()
+    plt.show()
+    pass
