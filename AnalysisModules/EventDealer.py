@@ -7,19 +7,19 @@ import numpy as np
 import copy
 import numpy.matlib
 
-from SBCcode.AnalysisModules.AnalyzeDytran import dytranAnalysis as da
-from SBCcode.AnalysisModules.EventAnalysis import EventAnalysis as eva
+from .AnalyzeDytran import dytranAnalysis as da
+from .EventAnalysis import EventAnalysis as eva
 # from SBCcode.AnalysisModules.ImageAnalysis import BubbleFinder
-from SBCcode.AnalysisModules.AcousticT0 import AcousticAnalysis as aa
-from SBCcode.AnalysisModules.PMTComprehensiveModule import PMTcm as pmtpa
-from SBCcode.AnalysisModules.PMTfastDAQalignment import PMTandFastDAQalignment as pmtfda
-from SBCcode.AnalysisModules.PTData import main as ptd
-from SBCcode.AnalysisModules.TimingAnalysis import TimingAnalysis as ta
-from SBCcode.DataHandling.GetSBCEvent import GetEvent as get_event
-from SBCcode.DataHandling.WriteBinary import WriteBinaryNtupleFile as wb
+from .AcousticT0 import AcousticAnalysis as aa
+from .PMTComprehensiveModule import PMTcm as pmtpa
+from .PMTfastDAQalignment import PMTandFastDAQalignment as pmtfda
+from .PTData import main as ptd
+from .TimingAnalysis import TimingAnalysis as ta
+from ..DataHandling.GetSBCEvent import GetEvent as get_event
+from ..DataHandling.WriteBinary import WriteBinaryNtupleFile as wb
 
 # For Acoustic t0 test
-from SBCcode.UserCode.John.NewT0 import calculate_t0 as calculate_t0
+from ..UserCode.John.NewT0 import calculate_t0 as calculate_t0
 
 def BuildEventList(rundir, first_event=0, last_event=-1):
     # Inputs:

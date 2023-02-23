@@ -16,7 +16,7 @@ import re
 # import matplotlib.pyplot as plt
 import copy
 # from SBCcode.Tools import SBCtools
-from SBCcode.DataHandling.WriteBinary import WriteBinaryNtupleFile as WB
+from ...DataHandling.WriteBinary import WriteBinaryNtupleFile as WB
 
 def get_runs(dir, search_for="folders", do_sort=True, reverse=False):
     # Author: John Gresl

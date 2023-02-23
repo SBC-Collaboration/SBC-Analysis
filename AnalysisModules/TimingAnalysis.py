@@ -1,7 +1,7 @@
 import numpy as np
 # import ipdb
 
-def TimingAnalysis(ev, pmtpa, aa, xyz=[], pmtpacut=np.zeros(0, dtype=np.bool)):
+def TimingAnalysis(ev, pmtpa, aa, xyz=[], pmtpacut=np.zeros(0, dtype=bool)):
     n_piezos = 2
     n_windows = 2
     default_output = dict(CAMperiod=np.float64(-1),  # seconds
