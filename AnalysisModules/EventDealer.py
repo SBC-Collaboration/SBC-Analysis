@@ -399,7 +399,7 @@ if __name__ == "__main__":
         ProcessSingleRun2(rundir="/bluearc/storage/SBC-17-data/20171007_3",
                           recondir="/nashome/j/jgresl/Test/Actuals", # Use your own directory for testing~
                           process_list = ["acoustic"])
-    elif False:
+    elif True:
         ProcessFromReconfile("/pnfs/coupp/persistent/grid_output/SBC-17/output/HistoryAnalysis_all.bin",
                              process_list=["exposure"],
                              recondir="/exp/e961/app/home/coupp/ProgramTesting")
