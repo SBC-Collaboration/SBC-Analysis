@@ -15,8 +15,10 @@ from .PMTComprehensiveModule import PMTcm as pmtpa
 from .PMTfastDAQalignment import PMTandFastDAQalignment as pmtfda
 from .PTData import main as ptd
 from .TimingAnalysis import TimingAnalysis as ta
+from .ExposureAnalysis import ExposureAnalysis as expa
 from ..DataHandling.GetSBCEvent import GetEvent as get_event
 from ..DataHandling.WriteBinary import WriteBinaryNtupleFile as wb
+from ..DataHandling.ReadBinary import ReadBlock as rb
 
 # For Acoustic t0 test
 from ..UserCode.John.NewT0 import calculate_t0 as calculate_t0
@@ -39,6 +41,86 @@ def BuildEventList(rundir, first_event=0, last_event=-1):
     if last_event >= 0:
         eventlist = eventlist[eventlist <= last_event]
     return np.sort(eventlist)
+
+
+def ProcessFromReconfile(reconfile, datadir='/exp/e961/data/SBC-17-data',
+                         dataset='SBC-2017', recondir='.', process_list=None):
+    # Inputs:
+    #   reconfile: Location of file that will be used for event list
+    #   dataset: Indicator used for filtering which analyses to run
+    #   recondir: Location of recon data/where we want to output our binary files
+    #   process_list: List of analyses modules to run. example: ["acoustic", "event", ""]
+    # Outputs: Nothing. Saves binary files to recondir.
+    if process_list is None:
+        process_list = []  # This is needed since lists are mutable objects. If you have a default argument
+                           # as a mutable object, then the default argument can *change* across multiple
+                           # function calls since the argument is created ONCE when the function is defined.
+    evlist_source = rb(reconfile)
+
+    if not os.path.isdir(recondir):
+        os.mkdir(recondir)
+
+    if dataset == 'SBC-2017':
+        loadlist = []
+        for process in process_list:
+            if process.lower().strip() == 'event':
+                loadlist.append('event')
+            elif process.lower().strip() == 'images':
+                loadlist.append('images')
+            elif process.lower().strip() == 'exposure':
+                loadlist.append('slowDAQ')
+                loadlist.append('event')
+            elif process.lower().strip() == 'history':
+                loadlist.append('slowDAQ')
+            elif any(process.lower().strip() == x for x in ['dytran', 'acoustic']):
+                loadlist.append('fastDAQ')
+            # elif process.lower().strip() == 'pmtpf':
+            #     loadlist.append('PMTtraces')
+            elif any(process.lower().strip() == x for x in ['pmtfda', 'pmt', 'timing']):
+                loadlist.append('fastDAQ')
+                loadlist.append('PMTtraces')
+        loadlist = list(set(loadlist))
+    else:
+        loadlist = ['~']
+
+    exposure_out = []
+
+    exposure_default = expa(None)
+
+    process_list = [p.lower().strip() for p in process_list]
+    eventlist = np.concatenate((evlist_source['runid'], evlist_source['ev'][:,None]), axis=1)
+
+    for ev in eventlist:
+        runname = str(ev[0])+'_'+str(ev[1])
+        rundir = os.path.join(datadir, runname)
+        t0 = time.time()
+        print('Starting event ' + runname + '/' + str(ev[2]))
+        thisevent = get_event(rundir, ev[2], *loadlist)
+        print('Time to load event:  '.rjust(35) +
+              str(time.time() - t0) + ' seconds')
+
+        if "exposure" in process_list:
+            # History analysis
+            t1 = time.time()
+            if dataset == 'SBC-2017':
+                try:
+                    exposure_out.append(expa(thisevent))
+                except:
+                    exposure_out.append(copy.deepcopy(exposure_default))
+                exposure_out[-1]['runid'] = ev[:2]
+                exposure_out[-1]['ev'] = ev[2:]
+            et = time.time() - t1
+            print('Exposure analysis:  '.rjust(35) + str(et) + ' seconds')
+
+        print('*** Full event analysis ***  '.rjust(35) +
+              str(time.time() - t0) + ' seconds')
+
+    if "exposure" in process_list:
+        wb(os.path.join(recondir,
+                        'ExposureAnalysis_all.bin'), exposure_out,
+           rowdef=1, initialkeys=['runid', 'ev'], drop_first_dim=False)
+
+    return
 
 
 def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=None):
@@ -313,7 +395,16 @@ def ProcessSingleRun2(rundir, dataset='SBC-2017', recondir='.', process_list=Non
 
 
 if __name__ == "__main__":
-    ProcessSingleRun2(rundir="/bluearc/storage/SBC-17-data/20171007_3",
-                      recondir="/nashome/j/jgresl/Test/Actuals", # Use your own directory for testing~
-                      process_list = ["acoustic"])
+    if False:
+        ProcessSingleRun2(rundir="/bluearc/storage/SBC-17-data/20171007_3",
+                          recondir="/nashome/j/jgresl/Test/Actuals", # Use your own directory for testing~
+                          process_list = ["acoustic"])
+    elif False:
+        ProcessFromReconfile("/pnfs/coupp/persistent/grid_output/SBC-17/output/HistoryAnalysis_all.bin",
+                             process_list=["exposure"],
+                             recondir="/exp/e961/app/home/coupp/ProgramTesting")
+    elif True:
+        ProcessFromReconfile("/pnfs/coupp/persistent/grid_output/SBC-17/output/20171011_10/HistoryAnalysis_20171011_10.bin",
+                             process_list=["exposure"],
+                             recondir="/exp/e961/app/home/coupp/ProgramTesting")
     pass
