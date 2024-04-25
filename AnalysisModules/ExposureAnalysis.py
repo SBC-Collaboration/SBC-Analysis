@@ -31,7 +31,11 @@ def ExposureAnalysis(ev,
 
     dt = np.mean(np.diff(ev['slowDAQ']['elapsed_time']))
     trig_ix = np.nonzero(np.diff(ev['slowDAQ']['TriggerLatch'])==1)[0][0]+1
-    exp_ix = np.nonzero(np.diff(ev['slowDAQ']['TriggerLatch'])==-1)[0][-1]+1
+    exp_ixarray = np.nonzero(np.diff(ev['slowDAQ']['TriggerLatch'])==-1)[0] #[-1]+1
+    if exp_ixarray.shape[0] > 0:
+      exp_ix = exp_ixarray[-1]+1
+    else:
+      exp_ix = 0
     bubix = np.intp(trig_ix + np.round(BubbleTime/dt))
     lt_end = ev['slowDAQ']['elapsed_time'][trig_ix]-0.5*dt
     lt_start = lt_end - ev['event']['livetime']
