@@ -85,11 +85,11 @@ def GenerateChisqDist(nu_sig, nu_bkg, r, ntoys):
     ''' Use PoissonChisqWBkg_UL to calculate a bunch of chisquares
         given a signal and background model (assuming no untagged bkg) --- 
         This is meant to help find the target_chisq for the FindUL function '''
-        
-    n = np.random.poisson(nu_sig + nu_bkg*r, ntoys)
-    k = np.random.poisson(nu_bkg, ntoys)
-    chisq = np.zeros((ntoys), dtype=np.float64)
+    toy_ones = np.ones((1,ntoys), dtype=np.float64)    
+    n = np.random.poisson((nu_sig + nu_bkg*r)[:,None]*toy_ones)
+    k = np.random.poisson(nu_bkg[:,None]*toy_ones)
+    chisq = np.zeros(n.shape, dtype=np.float64)
     for i_t in np.arange(ntoys, dtype=np.intp):
-        chisq[i_t] = PoissonChisqWBkg_UL(n, nu_sig, k, r)
-    return chisq
+        chisq[:,i_t] = PoissonChisqWBkg_UL(n[:,i_t], nu_sig, k[:,i_t], r)
+    return np.sum(chisq,axis=0)
 
